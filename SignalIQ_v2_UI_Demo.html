@@ -1,0 +1,819 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>SignalIQ v2 — Intelligent Revenue Layer</title>
+<style>
+  :root {
+    --bg-0: #07090d;
+    --bg-1: #0c1018;
+    --bg-2: #11161f;
+    --bg-3: #161c28;
+    --line: rgba(255,255,255,0.07);
+    --line-2: rgba(255,255,255,0.12);
+    --text-0: #f4f6fa;
+    --text-1: #c7ccd6;
+    --text-2: #838b99;
+    --text-3: #565d6b;
+    --accent: #7c5cff;
+    --accent-2: #4fd1c5;
+    --ventral: #34d399;
+    --sympathetic: #f59e0b;
+    --dorsal: #60a5fa;
+    --danger: #f87171;
+    --glow-v: 0 0 30px rgba(52, 211, 153, 0.35);
+    --glow-s: 0 0 30px rgba(245, 158, 11, 0.35);
+    --glow-d: 0 0 30px rgba(96, 165, 250, 0.35);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body {
+    background: var(--bg-0);
+    color: var(--text-0);
+    font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', sans-serif;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background:
+      radial-gradient(ellipse 800px 600px at 15% 10%, rgba(124,92,255,0.12), transparent 60%),
+      radial-gradient(ellipse 600px 400px at 85% 30%, rgba(79,209,197,0.08), transparent 60%),
+      radial-gradient(ellipse 700px 500px at 50% 100%, rgba(124,92,255,0.06), transparent 60%);
+    pointer-events: none;
+    z-index: 0;
+  }
+  .app {
+    position: relative;
+    z-index: 1;
+    display: grid;
+    grid-template-columns: 240px 1fr;
+    min-height: 100vh;
+  }
+
+  /* Sidebar */
+  .sidebar {
+    border-right: 1px solid var(--line);
+    padding: 24px 16px;
+    background: rgba(12,16,24,0.6);
+    backdrop-filter: blur(20px);
+    position: sticky;
+    top: 0;
+    height: 100vh;
+  }
+  .logo {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 0 8px 24px;
+    border-bottom: 1px solid var(--line);
+    margin-bottom: 20px;
+  }
+  .logo-mark {
+    width: 28px; height: 28px; border-radius: 8px;
+    background: linear-gradient(135deg, var(--accent), var(--accent-2));
+    position: relative;
+    box-shadow: 0 4px 20px rgba(124,92,255,0.4);
+  }
+  .logo-mark::after {
+    content: '';
+    position: absolute; inset: 6px;
+    border-radius: 4px;
+    background: var(--bg-0);
+  }
+  .logo-text { font-weight: 700; letter-spacing: -0.02em; font-size: 15px; }
+  .logo-text span { color: var(--accent-2); font-weight: 500; }
+  .nav-section { margin-top: 16px; }
+  .nav-label {
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: var(--text-3);
+    padding: 8px;
+  }
+  .nav-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 9px 12px;
+    border-radius: 8px;
+    color: var(--text-1);
+    font-size: 13.5px;
+    cursor: pointer;
+    transition: background 0.15s;
+    margin-bottom: 2px;
+  }
+  .nav-item:hover { background: var(--bg-2); }
+  .nav-item.active {
+    background: var(--bg-3);
+    color: var(--text-0);
+    box-shadow: inset 2px 0 0 var(--accent);
+  }
+  .nav-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--text-3); }
+  .nav-item.active .nav-dot { background: var(--accent-2); }
+
+  /* Main */
+  .main { padding: 28px 36px 60px; max-width: 1400px; }
+
+  .topbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 28px;
+  }
+  .greeting h1 {
+    font-size: 22px;
+    font-weight: 600;
+    letter-spacing: -0.02em;
+    margin-bottom: 4px;
+  }
+  .greeting p { color: var(--text-2); font-size: 13px; }
+  .topbar-actions { display: flex; gap: 10px; align-items: center; }
+  .pill {
+    padding: 6px 12px;
+    border-radius: 999px;
+    background: var(--bg-3);
+    border: 1px solid var(--line);
+    font-size: 11.5px;
+    color: var(--text-1);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .pill-dot {
+    width: 6px; height: 6px; border-radius: 50%;
+    background: var(--ventral);
+    box-shadow: 0 0 8px var(--ventral);
+    animation: pulse 2s infinite;
+  }
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+  }
+  .btn {
+    padding: 8px 16px;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    border: 1px solid var(--line-2);
+    background: var(--bg-3);
+    color: var(--text-0);
+    transition: all 0.15s;
+  }
+  .btn:hover { background: var(--bg-2); border-color: rgba(255,255,255,0.2); }
+  .btn-primary {
+    background: linear-gradient(135deg, var(--accent), #9370ff);
+    border: none;
+    box-shadow: 0 4px 20px rgba(124,92,255,0.4);
+  }
+  .btn-primary:hover { filter: brightness(1.1); }
+
+  /* KPI row */
+  .kpi-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 14px;
+    margin-bottom: 24px;
+  }
+  .kpi {
+    background: var(--bg-1);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: 18px 20px;
+    position: relative;
+    overflow: hidden;
+  }
+  .kpi-label {
+    font-size: 11.5px;
+    color: var(--text-2);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin-bottom: 10px;
+  }
+  .kpi-value {
+    font-size: 28px;
+    font-weight: 600;
+    letter-spacing: -0.03em;
+    margin-bottom: 4px;
+  }
+  .kpi-delta {
+    font-size: 12px;
+    color: var(--ventral);
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+  .kpi-delta.down { color: var(--danger); }
+  .kpi::after {
+    content: '';
+    position: absolute;
+    right: -40px; top: -40px;
+    width: 120px; height: 120px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(124,92,255,0.1), transparent 70%);
+  }
+
+  /* Content grid */
+  .content {
+    display: grid;
+    grid-template-columns: 1.4fr 1fr;
+    gap: 18px;
+  }
+  .card {
+    background: var(--bg-1);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    overflow: hidden;
+  }
+  .card-header {
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--line);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .card-title {
+    font-size: 14px;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+  }
+  .card-sub {
+    font-size: 11.5px;
+    color: var(--text-2);
+    margin-top: 2px;
+  }
+
+  /* Prospect table */
+  .prospect-row {
+    display: grid;
+    grid-template-columns: 3fr 1.2fr 0.9fr 1.4fr 90px;
+    gap: 16px;
+    padding: 14px 20px;
+    align-items: center;
+    border-bottom: 1px solid var(--line);
+    cursor: pointer;
+    transition: background 0.15s;
+  }
+  .prospect-row:last-child { border-bottom: none; }
+  .prospect-row:hover { background: var(--bg-2); }
+  .prospect-row.selected {
+    background: rgba(124,92,255,0.08);
+    box-shadow: inset 3px 0 0 var(--accent);
+  }
+  .person {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .avatar {
+    width: 34px; height: 34px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #4c5465, #2a3142);
+    color: var(--text-0);
+    font-size: 12.5px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+  .avatar.v { background: linear-gradient(135deg, #34d399, #10b981); }
+  .avatar.s { background: linear-gradient(135deg, #f59e0b, #d97706); }
+  .avatar.d { background: linear-gradient(135deg, #60a5fa, #3b82f6); }
+  .person-name { font-size: 13px; font-weight: 500; }
+  .person-sub { font-size: 11.5px; color: var(--text-2); margin-top: 2px; }
+
+  .state-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 10px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+  .state-badge.v { background: rgba(52,211,153,0.12); color: var(--ventral); }
+  .state-badge.s { background: rgba(245,158,11,0.12); color: var(--sympathetic); }
+  .state-badge.d { background: rgba(96,165,250,0.12); color: var(--dorsal); }
+  .state-dot { width: 6px; height: 6px; border-radius: 50%; }
+  .state-badge.v .state-dot { background: var(--ventral); box-shadow: var(--glow-v); }
+  .state-badge.s .state-dot { background: var(--sympathetic); box-shadow: var(--glow-s); }
+  .state-badge.d .state-dot { background: var(--dorsal); box-shadow: var(--glow-d); }
+
+  .rscore {
+    font-family: 'SF Mono', 'Menlo', monospace;
+    font-size: 15px;
+    font-weight: 600;
+  }
+  .rscore.high { color: var(--ventral); }
+  .rscore.mid { color: var(--sympathetic); }
+  .rscore.low { color: var(--text-2); }
+
+  .next-move {
+    font-size: 12px;
+    color: var(--text-1);
+    line-height: 1.4;
+  }
+
+  .micro-btn {
+    padding: 6px 10px;
+    border-radius: 6px;
+    border: 1px solid var(--line-2);
+    background: transparent;
+    color: var(--text-1);
+    font-size: 11.5px;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .micro-btn:hover { background: var(--accent); border-color: var(--accent); color: white; }
+
+  /* Detail panel */
+  .nss-viz {
+    padding: 24px 20px;
+  }
+  .nss-name { font-size: 16px; font-weight: 600; margin-bottom: 2px; }
+  .nss-role { font-size: 12px; color: var(--text-2); margin-bottom: 20px; }
+
+  .ladder {
+    position: relative;
+    height: 180px;
+    border-radius: 10px;
+    background: var(--bg-2);
+    border: 1px solid var(--line);
+    overflow: hidden;
+    margin-bottom: 18px;
+  }
+  .ladder-band {
+    position: absolute;
+    left: 0; right: 0;
+    height: 33.33%;
+    display: flex;
+    align-items: center;
+    padding: 0 16px;
+    font-size: 11.5px;
+    color: var(--text-2);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    justify-content: space-between;
+    transition: background 0.4s;
+  }
+  .ladder-band.ventral { top: 0; background: linear-gradient(90deg, rgba(52,211,153,0.05), rgba(52,211,153,0.12)); }
+  .ladder-band.sympathetic { top: 33.33%; background: linear-gradient(90deg, rgba(245,158,11,0.05), rgba(245,158,11,0.12)); }
+  .ladder-band.dorsal { top: 66.66%; background: linear-gradient(90deg, rgba(96,165,250,0.05), rgba(96,165,250,0.12)); }
+  .ladder-band.active.ventral { background: linear-gradient(90deg, rgba(52,211,153,0.15), rgba(52,211,153,0.3)); box-shadow: inset 0 0 40px rgba(52,211,153,0.15); }
+  .ladder-band.active.sympathetic { background: linear-gradient(90deg, rgba(245,158,11,0.18), rgba(245,158,11,0.35)); box-shadow: inset 0 0 40px rgba(245,158,11,0.15); }
+  .ladder-band.active.dorsal { background: linear-gradient(90deg, rgba(96,165,250,0.15), rgba(96,165,250,0.3)); box-shadow: inset 0 0 40px rgba(96,165,250,0.15); }
+  .ladder-conf { font-family: 'SF Mono', 'Menlo', monospace; font-size: 12px; font-weight: 600; }
+  .ladder-band.active.ventral .ladder-conf { color: var(--ventral); }
+  .ladder-band.active.sympathetic .ladder-conf { color: var(--sympathetic); }
+  .ladder-band.active.dorsal .ladder-conf { color: var(--dorsal); }
+
+  .signals {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    margin-bottom: 18px;
+  }
+  .signal {
+    padding: 10px 12px;
+    background: var(--bg-2);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+  }
+  .signal-label {
+    font-size: 10.5px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-3);
+    margin-bottom: 4px;
+  }
+  .signal-value {
+    font-size: 12.5px;
+    color: var(--text-0);
+    font-weight: 500;
+  }
+
+  .verdict {
+    padding: 16px;
+    border-radius: 10px;
+    background: linear-gradient(135deg, rgba(245,158,11,0.08), rgba(245,158,11,0.02));
+    border: 1px solid rgba(245,158,11,0.2);
+    margin-bottom: 16px;
+  }
+  .verdict-label {
+    font-size: 10.5px;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--sympathetic);
+    margin-bottom: 8px;
+    font-weight: 600;
+  }
+  .verdict-body {
+    font-size: 13px;
+    color: var(--text-0);
+    line-height: 1.55;
+  }
+  .verdict-body strong { color: var(--sympathetic); font-weight: 600; }
+
+  /* Message composer */
+  .composer {
+    padding: 20px;
+    border-top: 1px solid var(--line);
+    background: var(--bg-2);
+  }
+  .composer-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+  }
+  .composer-title {
+    font-size: 12.5px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+  }
+  .archetype-tag {
+    padding: 4px 10px;
+    border-radius: 6px;
+    font-size: 11px;
+    background: rgba(245,158,11,0.15);
+    color: var(--sympathetic);
+    font-weight: 500;
+  }
+  .msg-draft {
+    background: var(--bg-1);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 14px 16px;
+    font-size: 13.5px;
+    line-height: 1.6;
+    color: var(--text-0);
+    margin-bottom: 14px;
+    position: relative;
+  }
+  .composer-actions {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+  }
+  .composer-actions .btn { font-size: 12.5px; padding: 7px 14px; }
+  .composer-ghost {
+    color: var(--text-2);
+    font-size: 11.5px;
+    margin-left: auto;
+  }
+
+  /* Signal feed */
+  .feed-item {
+    padding: 14px 20px;
+    border-bottom: 1px solid var(--line);
+    display: flex;
+    gap: 12px;
+    align-items: start;
+  }
+  .feed-item:last-child { border-bottom: none; }
+  .feed-icon {
+    width: 32px; height: 32px;
+    border-radius: 8px;
+    background: var(--bg-3);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    flex-shrink: 0;
+  }
+  .feed-body { flex: 1; }
+  .feed-text { font-size: 12.5px; color: var(--text-1); line-height: 1.45; margin-bottom: 3px; }
+  .feed-text strong { color: var(--text-0); font-weight: 600; }
+  .feed-meta { font-size: 11px; color: var(--text-3); }
+
+  /* Footer strip */
+  .footer-strip {
+    margin-top: 30px;
+    padding: 20px 24px;
+    background: linear-gradient(135deg, rgba(124,92,255,0.08), rgba(79,209,197,0.04));
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .footer-strip h3 {
+    font-size: 15px;
+    margin-bottom: 4px;
+    letter-spacing: -0.01em;
+  }
+  .footer-strip p {
+    font-size: 12.5px;
+    color: var(--text-2);
+  }
+
+  @media (max-width: 1100px) {
+    .content { grid-template-columns: 1fr; }
+    .kpi-grid { grid-template-columns: repeat(2, 1fr); }
+    .app { grid-template-columns: 1fr; }
+    .sidebar { display: none; }
+  }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <aside class="sidebar">
+    <div class="logo">
+      <div class="logo-mark"></div>
+      <div class="logo-text">SignalIQ <span>v2</span></div>
+    </div>
+    <div class="nav-section">
+      <div class="nav-label">Revenue</div>
+      <div class="nav-item active"><span class="nav-dot"></span>Command Center</div>
+      <div class="nav-item"><span class="nav-dot"></span>Prospects</div>
+      <div class="nav-item"><span class="nav-dot"></span>Sequences</div>
+      <div class="nav-item"><span class="nav-dot"></span>Meetings</div>
+    </div>
+    <div class="nav-section">
+      <div class="nav-label">Intelligence</div>
+      <div class="nav-item"><span class="nav-dot"></span>Signal Feed</div>
+      <div class="nav-item"><span class="nav-dot"></span>NSS Monitor</div>
+      <div class="nav-item"><span class="nav-dot"></span>Voice Calibration</div>
+    </div>
+    <div class="nav-section">
+      <div class="nav-label">Account</div>
+      <div class="nav-item"><span class="nav-dot"></span>Integrations</div>
+      <div class="nav-item"><span class="nav-dot"></span>Settings</div>
+    </div>
+  </aside>
+
+  <main class="main">
+
+    <div class="topbar">
+      <div class="greeting">
+        <h1>Good morning, Chris.</h1>
+        <p>3 prospects are in a buying window today. One needs a pattern interrupt immediately.</p>
+      </div>
+      <div class="topbar-actions">
+        <div class="pill"><span class="pill-dot"></span>NSS engine live</div>
+        <button class="btn">Import list</button>
+        <button class="btn btn-primary">Run signal sweep</button>
+      </div>
+    </div>
+
+    <div class="kpi-grid">
+      <div class="kpi">
+        <div class="kpi-label">Active Pipeline</div>
+        <div class="kpi-value">$184,200</div>
+        <div class="kpi-delta">▲ 28% vs last week</div>
+      </div>
+      <div class="kpi">
+        <div class="kpi-label">Ventral Vagal %</div>
+        <div class="kpi-value">41%</div>
+        <div class="kpi-delta">▲ 9pts — healthy zone</div>
+      </div>
+      <div class="kpi">
+        <div class="kpi-label">Meetings Booked</div>
+        <div class="kpi-value">17</div>
+        <div class="kpi-delta">▲ 6 this week</div>
+      </div>
+      <div class="kpi">
+        <div class="kpi-label">Avg R-Score</div>
+        <div class="kpi-value">68.4</div>
+        <div class="kpi-delta down">▼ 2.1 — refresh signals</div>
+      </div>
+    </div>
+
+    <div class="content">
+
+      <div class="card">
+        <div class="card-header">
+          <div>
+            <div class="card-title">Today's Prioritized Prospects</div>
+            <div class="card-sub">Sorted by readiness × nervous system opportunity</div>
+          </div>
+          <button class="micro-btn">Filter</button>
+        </div>
+
+        <div class="prospect-row selected">
+          <div class="person">
+            <div class="avatar s">MR</div>
+            <div>
+              <div class="person-name">Marcus Reyes</div>
+              <div class="person-sub">VP Growth · Nimbus Labs · 42 emp</div>
+            </div>
+          </div>
+          <div><span class="state-badge s"><span class="state-dot"></span>Sympathetic</span></div>
+          <div class="rscore high">87</div>
+          <div class="next-move">Pattern interrupt. Do not pitch. Two-sentence curiosity hook.</div>
+          <button class="micro-btn">Act</button>
+        </div>
+
+        <div class="prospect-row">
+          <div class="person">
+            <div class="avatar v">KT</div>
+            <div>
+              <div class="person-name">Keira Thompson</div>
+              <div class="person-sub">Founder · Braid AI · 8 emp</div>
+            </div>
+          </div>
+          <div><span class="state-badge v"><span class="state-dot"></span>Ventral</span></div>
+          <div class="rscore high">92</div>
+          <div class="next-move">Meeting ask. She's ready. Confirm Thursday 2pm.</div>
+          <button class="micro-btn">Act</button>
+        </div>
+
+        <div class="prospect-row">
+          <div class="person">
+            <div class="avatar d">JW</div>
+            <div>
+              <div class="person-name">Jordan Walsh</div>
+              <div class="person-sub">CTO · Ledgerpoint · 16 emp</div>
+            </div>
+          </div>
+          <div><span class="state-badge d"><span class="state-dot"></span>Dorsal</span></div>
+          <div class="rscore mid">64</div>
+          <div class="next-move">Permission-to-reconnect message. No ask. 5-day silence.</div>
+          <button class="micro-btn">Act</button>
+        </div>
+
+        <div class="prospect-row">
+          <div class="person">
+            <div class="avatar v">AO</div>
+            <div>
+              <div class="person-name">Amara Okafor</div>
+              <div class="person-sub">Head of RevOps · Trellix · 120 emp</div>
+            </div>
+          </div>
+          <div><span class="state-badge v"><span class="state-dot"></span>Ventral</span></div>
+          <div class="rscore high">78</div>
+          <div class="next-move">Share pricing. She asked specific numbers yesterday.</div>
+          <button class="micro-btn">Act</button>
+        </div>
+
+        <div class="prospect-row">
+          <div class="person">
+            <div class="avatar s">DC</div>
+            <div>
+              <div class="person-name">Derek Chen</div>
+              <div class="person-sub">Founder · Stackforge · 4 emp</div>
+            </div>
+          </div>
+          <div><span class="state-badge s"><span class="state-dot"></span>Sympathetic</span></div>
+          <div class="rscore mid">71</div>
+          <div class="next-move">Acknowledge his time constraint. Offer async video instead.</div>
+          <button class="micro-btn">Act</button>
+        </div>
+
+        <div class="prospect-row">
+          <div class="person">
+            <div class="avatar d">SP</div>
+            <div>
+              <div class="person-name">Sienna Patel</div>
+              <div class="person-sub">COO · Parallax · 28 emp</div>
+            </div>
+          </div>
+          <div><span class="state-badge d"><span class="state-dot"></span>Dorsal</span></div>
+          <div class="rscore low">52</div>
+          <div class="next-move">Nurture only. Value drop in 14 days.</div>
+          <button class="micro-btn">Act</button>
+        </div>
+      </div>
+
+      <div style="display: flex; flex-direction: column; gap: 18px;">
+        <div class="card">
+          <div class="card-header">
+            <div>
+              <div class="card-title">Nervous System Read</div>
+              <div class="card-sub">Live inference · 94% model confidence</div>
+            </div>
+          </div>
+
+          <div class="nss-viz">
+            <div class="nss-name">Marcus Reyes</div>
+            <div class="nss-role">VP Growth · Nimbus Labs · Last reply 41 min ago</div>
+
+            <div class="ladder">
+              <div class="ladder-band ventral">
+                <span>Ventral Vagal · Regulated</span>
+                <span class="ladder-conf">18%</span>
+              </div>
+              <div class="ladder-band sympathetic active">
+                <span>Sympathetic · Activated</span>
+                <span class="ladder-conf">71%</span>
+              </div>
+              <div class="ladder-band dorsal">
+                <span>Dorsal Vagal · Withdrawn</span>
+                <span class="ladder-conf">11%</span>
+              </div>
+            </div>
+
+            <div class="signals">
+              <div class="signal">
+                <div class="signal-label">Reply latency</div>
+                <div class="signal-value">Rapid-fire · 4 msgs in 9 min</div>
+              </div>
+              <div class="signal">
+                <div class="signal-label">Language register</div>
+                <div class="signal-value">Defensive · "already have"</div>
+              </div>
+              <div class="signal">
+                <div class="signal-label">Scarcity markers</div>
+                <div class="signal-value">High · time-pressured</div>
+              </div>
+              <div class="signal">
+                <div class="signal-label">R-Score trajectory</div>
+                <div class="signal-value">87 · trending up 12pts</div>
+              </div>
+            </div>
+
+            <div class="verdict">
+              <div class="verdict-label">⚡ Read & Recommendation</div>
+              <div class="verdict-body">
+                Marcus is <strong>activated and guarded</strong>. He's in the buying window but his nervous system is bracing. Pitching now blows the deal. Send a two-sentence curiosity hook that gives him an exit. He'll lean in because you didn't chase.
+              </div>
+            </div>
+          </div>
+
+          <div class="composer">
+            <div class="composer-header">
+              <div class="composer-title">AI-Drafted Response</div>
+              <span class="archetype-tag">Pattern Interrupt · Archetype 07</span>
+            </div>
+            <div class="msg-draft">
+              Marcus — saw your post about scaling Nimbus past 50. Not pitching. One question you can answer or ignore: what's the one part of your outbound that feels most broken right now? Zero pressure to reply.
+            </div>
+            <div class="composer-actions">
+              <button class="btn btn-primary">Approve & send</button>
+              <button class="btn">Regenerate</button>
+              <button class="btn">Edit</button>
+              <span class="composer-ghost">41 words · matches his cadence</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <div>
+              <div class="card-title">Live Signal Feed</div>
+              <div class="card-sub">Updated 2 min ago</div>
+            </div>
+          </div>
+          <div class="feed-item">
+            <div class="feed-icon">📈</div>
+            <div class="feed-body">
+              <div class="feed-text"><strong>Braid AI</strong> just raised $4M seed · Keira moved to ventral · R-Score +18</div>
+              <div class="feed-meta">12 min ago · Buying window open 7 days</div>
+            </div>
+          </div>
+          <div class="feed-item">
+            <div class="feed-icon">🔍</div>
+            <div class="feed-body">
+              <div class="feed-text"><strong>Trellix</strong> posted 3 sales hires · RevOps stack shift detected</div>
+              <div class="feed-meta">28 min ago · Match: 87%</div>
+            </div>
+          </div>
+          <div class="feed-item">
+            <div class="feed-icon">⚠️</div>
+            <div class="feed-body">
+              <div class="feed-text"><strong>Ledgerpoint</strong> went silent 5 days · Jordan flipped dorsal · do not push</div>
+              <div class="feed-meta">1 hr ago · Re-entry window in 9 days</div>
+            </div>
+          </div>
+          <div class="feed-item">
+            <div class="feed-icon">🧠</div>
+            <div class="feed-body">
+              <div class="feed-text">Your voice model learned 6 new patterns from yesterday's approved sequences</div>
+              <div class="feed-meta">3 hrs ago · Confidence +2.4%</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="footer-strip">
+      <div>
+        <h3>Revenue is a nervous system event.</h3>
+        <p>SignalIQ v2 reads the buyer. You close the deal. Built by psychologists, not growth hackers.</p>
+      </div>
+      <button class="btn btn-primary">Invite your team</button>
+    </div>
+
+  </main>
+</div>
+
+<script>
+  // Subtle interaction: clicking prospect rows updates the NSS panel state visual
+  const rows = document.querySelectorAll('.prospect-row');
+  rows.forEach(row => {
+    row.addEventListener('click', () => {
+      document.querySelectorAll('.prospect-row').forEach(r => r.classList.remove('selected'));
+      row.classList.add('selected');
+    });
+  });
+</script>
+</body>
+</html>
