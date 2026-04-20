@@ -2,9 +2,12 @@ import { notFound } from "next/navigation";
 import Composer from "@/components/Composer";
 import Ladder from "@/components/Ladder";
 import StateBadge from "@/components/StateBadge";
+import LogInteraction from "@/components/LogInteraction";
+import SignalScoreBadge from "@/components/SignalScoreBadge";
 import { getProspect, prospects } from "@/lib/data";
 import { forbiddenFor, nextMoveFor, stateCode, stateLabel } from "@/lib/nss";
 import { rBand, rScore } from "@/lib/rscore";
+import { calcSignalScore } from "@/lib/airtable";
 
 export function generateStaticParams() {
   return prospects.map(p => ({ id: p.id }));
@@ -28,6 +31,7 @@ export default function ProspectDetail({ params }: { params: { id: string } }) {
         <div className="topbar-actions">
           <StateBadge state={p.state} />
           <div className="pill">R-Score <strong style={{ marginLeft: 6 }} className={`rscore ${band}`}>{Math.round(r)}</strong></div>
+          <SignalScoreBadge score={calcSignalScore({ lastTouchDaysAgo: p.lastTouchDaysAgo, interactions90d: p.interactions.length, avgDepth: 3, intent: p.intentVelocity })} />
           <button className="btn">Export</button>
         </div>
       </div>
@@ -62,6 +66,7 @@ export default function ProspectDetail({ params }: { params: { id: string } }) {
             </div>
           </div>
           <Composer prospect={p} />
+          <LogInteraction contactId={p.id} />
         </div>
 
         <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
