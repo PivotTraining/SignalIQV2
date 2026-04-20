@@ -7,7 +7,7 @@ import SignalScoreBadge from "@/components/SignalScoreBadge";
 import { getProspect, prospects } from "@/lib/data";
 import { forbiddenFor, nextMoveFor, stateCode, stateLabel } from "@/lib/nss";
 import { rBand, rScore } from "@/lib/rscore";
-import { calcSignalScore } from "@/lib/airtable";
+import { calcSignalScore } from "@/lib/scoring";
 
 export function generateStaticParams() {
   return prospects.map(p => ({ id: p.id }));

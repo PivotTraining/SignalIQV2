@@ -6,7 +6,7 @@ const REFRESH_MS = 2 * 60 * 1000; // 2 minutes per spec §7.4
 
 export function useProspects() {
   const [prospects, setProspects] = useState<Prospect[]>([]);
-  const [source, setSource]       = useState<"airtable" | "seed" | "loading">("loading");
+  const [source, setSource]       = useState<"supabase" | "airtable" | "seed" | "loading">("loading");
   const [lastSync, setLastSync]   = useState<Date | null>(null);
 
   const fetch_ = useCallback(async () => {
@@ -14,7 +14,7 @@ export function useProspects() {
       const res  = await fetch("/api/contacts", { cache: "no-store" });
       const json = await res.json() as { source: string; data: Prospect[] };
       setProspects(json.data);
-      setSource(json.source as "airtable" | "seed");
+      setSource(json.source as "supabase" | "airtable" | "seed");
       setLastSync(new Date());
     } catch {
       // keep previous state on error

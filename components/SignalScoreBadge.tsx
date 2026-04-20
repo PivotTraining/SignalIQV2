@@ -1,4 +1,4 @@
-import { signalBand } from "@/lib/airtable";
+import { signalBand } from "@/lib/scoring";
 
 const bandColors: Record<string, string> = {
   hot:      "var(--danger)",

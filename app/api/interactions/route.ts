@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { airtableEnabled, logInteraction } from "@/lib/airtable";
+import { logInteraction, backendSource } from "@/lib/db";
 
 export async function POST(req: Request) {
   try {
@@ -16,13 +16,8 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "contactId and body are required" }, { status: 400 });
     }
 
-    if (airtableEnabled) {
-      const id = await logInteraction(body);
-      return NextResponse.json({ ok: true, id });
-    }
-
-    // Seed mode — acknowledge without persisting
-    return NextResponse.json({ ok: true, id: "seed_" + Date.now(), note: "seed mode" });
+    const id = await logInteraction(body);
+    return NextResponse.json({ ok: true, id, source: backendSource });
   } catch (err) {
     console.error("[interactions]", err);
     return NextResponse.json({ error: "server error" }, { status: 500 });

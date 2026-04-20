@@ -1,10 +1,10 @@
 import { NextResponse } from "next/server";
-import { airtableEnabled, fetchProspect, updateContactNextMove } from "@/lib/airtable";
+import { fetchProspect, updateContactNextMove, backendSource } from "@/lib/db";
 import { getProspect } from "@/lib/data";
 
 export async function GET(_req: Request, { params }: { params: { id: string } }) {
   try {
-    if (airtableEnabled) {
+    if (backendSource !== "seed") {
       const p = await fetchProspect(params.id);
       if (!p) return NextResponse.json({ error: "not found" }, { status: 404 });
       return NextResponse.json(p);
@@ -21,7 +21,7 @@ export async function GET(_req: Request, { params }: { params: { id: string } })
 export async function PATCH(req: Request, { params }: { params: { id: string } }) {
   try {
     const body = await req.json() as { nextMove?: string };
-    if (airtableEnabled && body.nextMove) {
+    if (backendSource !== "seed" && body.nextMove) {
       await updateContactNextMove(params.id, body.nextMove);
       return NextResponse.json({ ok: true });
     }

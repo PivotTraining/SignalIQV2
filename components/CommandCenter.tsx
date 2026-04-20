@@ -4,7 +4,7 @@ import ProspectRow from "./ProspectRow";
 import { feed, kpis } from "@/lib/data";
 import { rScore } from "@/lib/rscore";
 import { useProspects } from "@/lib/useProspects";
-import { calcSignalScore, signalBand } from "@/lib/airtable";
+import { calcSignalScore, signalBand } from "@/lib/scoring";
 import SignalScoreBadge from "./SignalScoreBadge";
 
 export default function CommandCenter() {
@@ -32,15 +32,17 @@ export default function CommandCenter() {
         <div className="greeting">
           <h1>Good morning, Chris.</h1>
           <p>
-            {source === "airtable"
+            {source === "supabase"
+              ? `Live from Supabase · ${prospects.length} contacts · synced ${lastSync?.toLocaleTimeString()}`
+              : source === "airtable"
               ? `Live from Airtable · ${prospects.length} contacts · synced ${lastSync?.toLocaleTimeString()}`
-              : "Seed data — connect Airtable to go live"}
+              : "Seed data — connect Supabase or Airtable to go live"}
           </p>
         </div>
         <div className="topbar-actions">
           <div className="pill">
             <span className="pill-dot" />
-            {source === "airtable" ? "Airtable live" : "NSS engine live"}
+            {source === "supabase" ? "Supabase live" : source === "airtable" ? "Airtable live" : "NSS engine live"}
           </div>
           <button className="btn">Import list</button>
           <button className="btn btn-primary">Run signal sweep</button>
@@ -127,7 +129,7 @@ export default function CommandCenter() {
         <div>
           <h3>Your product is built. Now let AI close the customer.</h3>
           <p>
-            {source === "airtable"
+            {(source === "supabase" || source === "airtable")
               ? "Cloud synced · Chris & Jazmine share one source of truth · Signal Scores update automatically"
               : "Built on polyvagal theory. Engineered in Cleveland and Atlanta."}
           </p>
