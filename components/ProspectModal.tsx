@@ -3,7 +3,6 @@ import { useEffect, useState, useRef } from "react";
 import type { Prospect } from "@/lib/types";
 import { stateCode, stateLabel, nextMoveFor, forbiddenFor } from "@/lib/nss";
 import { rBand, rScore, rBandLabel } from "@/lib/rscore";
-import { calcSignalScore } from "@/lib/scoring";
 import { getCallScript, getEmailScript, NSS_TONE } from "@/lib/callScripts";
 import Composer from "./Composer";
 import LogInteraction from "./LogInteraction";
@@ -387,10 +386,22 @@ export default function ProspectModal({ prospect: initialProspect, onClose }: Pr
   const [tab, setTab]             = useState<Tab>("actions");
   const [showScript, setShowScript]         = useState(false);
   const [showEmailScript, setShowEmailScript] = useState(false);
+  const [showScoreDetail, setShowScoreDetail] = useState(false);
   const backdropRef = useRef<HTMLDivElement>(null);
 
   // Sync if parent re-passes a new prospect
   useEffect(() => setProspect(initialProspect), [initialProspect]);
+
+  // Refetch prospect from API to pick up freshly recalculated scores
+  async function refreshProspect() {
+    try {
+      const res = await fetch(`/api/contacts/${prospect.id}`, { cache: "no-store" });
+      if (res.ok) {
+        const updated = await res.json() as Prospect;
+        setProspect(updated);
+      }
+    } catch { /* keep current state */ }
+  }
 
   // Close on Escape
   useEffect(() => {
@@ -620,24 +631,72 @@ export default function ProspectModal({ prospect: initialProspect, onClose }: Pr
                 </div>
               </div>
 
-              {/* Score breakdown */}
+              {/* Priority score — simplified 3-bar view */}
               <div style={{ marginBottom: 20 }}>
-                <div style={{ fontSize: 11, textTransform: "uppercase", letterSpacing: "0.1em", color: "var(--text-3)", marginBottom: 10, fontWeight: 600 }}>
-                  R-Score breakdown — {Math.round(r)}
+                {/* Header row */}
+                <div style={{ display: "flex", alignItems: "center", marginBottom: 12 }}>
+                  <div style={{ fontSize: 11, textTransform: "uppercase", letterSpacing: "0.1em", color: "var(--text-3)", fontWeight: 600 }}>
+                    Priority score
+                  </div>
+                  <span style={{
+                    marginLeft: 8, padding: "2px 10px", borderRadius: 20,
+                    fontSize: 12, fontWeight: 700,
+                    background: band === "high" ? "rgba(34,197,94,0.12)" : band === "mid" ? "rgba(234,179,8,0.10)" : "rgba(148,163,184,0.10)",
+                    color: band === "high" ? "#22c55e" : band === "mid" ? "#ca8a04" : "#64748b",
+                  }}>
+                    {band === "high" ? "High" : band === "mid" ? "Mid" : "Low"} · {Math.round(r)}
+                  </span>
+                  <button
+                    onClick={() => setShowScoreDetail(s => !s)}
+                    style={{
+                      marginLeft: "auto", background: "none", border: "none",
+                      cursor: "pointer", fontSize: 11.5, color: "var(--text-3)",
+                      padding: "2px 6px",
+                    }}
+                  >
+                    {showScoreDetail ? "Hide detail ↑" : "Show detail ↓"}
+                  </button>
                 </div>
-                <ScoreBar label="Signal stack"     value={prospect.signalStack}          weight="0.25" />
-                <ScoreBar label="Intent velocity"  value={prospect.intentVelocity}        weight="0.20" />
-                <ScoreBar label="Budget indicator" value={prospect.budgetIndicator}       weight="0.15" />
-                <ScoreBar label="Authority match"  value={prospect.authorityMatch}        weight="0.15" />
-                <ScoreBar label="Timing window"    value={prospect.timingWindow}          weight="0.15" />
-                <ScoreBar label="Social proof"     value={prospect.socialProofAlignment}  weight="0.10" />
+
+                {/* 3 grouped bars — always visible */}
+                <ScoreBar
+                  label="Activity — how recently & often you've engaged"
+                  value={Math.round(prospect.signalStack * 0.6 + prospect.socialProofAlignment * 0.4)}
+                  weight=""
+                />
+                <ScoreBar
+                  label="Interest — buying signals & intent"
+                  value={Math.round(prospect.intentVelocity * 0.6 + prospect.timingWindow * 0.4)}
+                  weight=""
+                />
+                <ScoreBar
+                  label="Fit — budget, authority & timing"
+                  value={Math.round(prospect.budgetIndicator * 0.4 + prospect.authorityMatch * 0.35 + prospect.timingWindow * 0.25)}
+                  weight=""
+                />
+
+                {/* Full breakdown — toggle */}
+                {showScoreDetail && (
+                  <div style={{ marginTop: 12, paddingTop: 12, borderTop: "1px solid var(--line)" }}>
+                    <div style={{ fontSize: 10.5, color: "var(--text-3)", marginBottom: 8, textTransform: "uppercase", letterSpacing: "0.07em" }}>
+                      Full breakdown
+                    </div>
+                    <ScoreBar label="Signal stack"     value={prospect.signalStack}         weight="0.25" />
+                    <ScoreBar label="Intent velocity"  value={prospect.intentVelocity}       weight="0.20" />
+                    <ScoreBar label="Budget indicator" value={prospect.budgetIndicator}      weight="0.15" />
+                    <ScoreBar label="Authority match"  value={prospect.authorityMatch}       weight="0.15" />
+                    <ScoreBar label="Timing window"    value={prospect.timingWindow}         weight="0.15" />
+                    <ScoreBar label="Social proof"     value={prospect.socialProofAlignment} weight="0.10" />
+                  </div>
+                )}
               </div>
 
               {/* Log interaction */}
               <div style={{ borderTop: "1px solid var(--line)", paddingTop: 16 }}>
                 <LogInteraction contactId={prospect.id} onLogged={() => {
-                  // Optimistically update lastTouchDaysAgo
+                  // Optimistic update + delayed refetch to pick up recalculated scores
                   setProspect(p => ({ ...p, lastTouchDaysAgo: 0 }));
+                  setTimeout(refreshProspect, 1800);
                 }} />
               </div>
             </div>

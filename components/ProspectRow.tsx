@@ -6,53 +6,81 @@ import { rBand, rScore } from "@/lib/rscore";
 import StateBadge from "./StateBadge";
 
 interface Props {
-  p: Prospect;
-  onAct?: (p: Prospect) => void;
+  p:            Prospect;
+  onAct?:       (p: Prospect) => void;
+  isFavorited?: boolean;
+  onFavorite?:  (id: string) => void;
 }
 
-export default function ProspectRow({ p, onAct }: Props) {
-  const r         = rScore(p);
-  const band      = rBand(r);
-  const avatarCode = stateCode[p.state];
+const PRIORITY: Record<string, { label: string; bg: string; color: string }> = {
+  high: { label: "High",   bg: "rgba(34,197,94,0.12)",   color: "#22c55e" },
+  mid:  { label: "Mid",    bg: "rgba(234,179,8,0.10)",   color: "#ca8a04" },
+  low:  { label: "Low",    bg: "rgba(148,163,184,0.10)", color: "#64748b" },
+};
+
+export default function ProspectRow({ p, onAct, isFavorited, onFavorite }: Props) {
+  const r        = rScore(p);
+  const band     = rBand(r);
+  const code     = stateCode[p.state];
+  const priority = PRIORITY[band] ?? PRIORITY.low;
 
   return (
-    <div
-      className="prospect-row"
-      style={{ display: "grid", position: "relative" }}
-    >
-      {/* Clickable overlay for row navigation (name/info area) */}
+    <div className="prospect-row" style={{ display: "grid", position: "relative" }}>
+
+      {/* Clickable overlay for row navigation */}
       <Link
         href={`/prospects/${p.id}`}
-        style={{
-          position: "absolute", inset: 0,
-          display: "block", zIndex: 0,
-        }}
+        style={{ position: "absolute", inset: 0, display: "block", zIndex: 0 }}
         aria-label={`Open ${p.name} detail`}
         tabIndex={-1}
       />
 
-      {/* Person — z-index 1 so it's above the link overlay but the link still covers background */}
+      {/* Contact column — star + avatar + name */}
       <div className="person" style={{ position: "relative", zIndex: 1 }}>
-        <div className={`avatar ${avatarCode}`}>{p.initials}</div>
+        <button
+          onClick={e => { e.preventDefault(); e.stopPropagation(); onFavorite?.(p.id); }}
+          title={isFavorited ? "Remove from favorites" : "Add to favorites"}
+          style={{
+            background: "none", border: "none", cursor: "pointer",
+            fontSize: 15, padding: "0 4px 0 0", flexShrink: 0,
+            color: isFavorited ? "#f59e0b" : "var(--text-3)",
+            opacity: isFavorited ? 1 : 0.35,
+            transition: "opacity 0.15s, color 0.15s",
+            lineHeight: 1,
+          }}
+        >
+          {isFavorited ? "★" : "☆"}
+        </button>
+        <div className={`avatar ${code}`}>{p.initials}</div>
         <div>
           <div className="person-name">{p.name}</div>
           <div className="person-sub">{p.title} · {p.company}</div>
         </div>
       </div>
 
+      {/* NSS state */}
       <div style={{ position: "relative", zIndex: 1 }}>
         <StateBadge state={p.state} />
       </div>
 
-      <div className={`rscore ${band}`} style={{ position: "relative", zIndex: 1 }}>
-        {Math.round(r)}
+      {/* Priority badge — simplified from raw R-Score number */}
+      <div style={{ position: "relative", zIndex: 1 }}>
+        <span style={{
+          display: "inline-flex", alignItems: "center",
+          padding: "3px 10px", borderRadius: 20,
+          fontSize: 11.5, fontWeight: 600,
+          background: priority.bg, color: priority.color,
+        }}>
+          {priority.label}
+        </span>
       </div>
 
+      {/* Next move */}
       <div className="next-move" style={{ position: "relative", zIndex: 1 }}>
         {p.nextMove?.slice(0, 60)}{p.nextMove && p.nextMove.length > 60 ? "…" : ""}
       </div>
 
-      {/* Act button — highest z-index, stops propagation so it doesn't follow the link */}
+      {/* Act button */}
       <button
         className="micro-btn"
         style={{ position: "relative", zIndex: 2 }}
@@ -62,7 +90,6 @@ export default function ProspectRow({ p, onAct }: Props) {
           if (onAct) {
             onAct(p);
           } else {
-            // Fallback: navigate to detail page
             window.location.href = `/prospects/${p.id}`;
           }
         }}

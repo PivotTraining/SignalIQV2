@@ -4,6 +4,7 @@ import ProspectRow from "@/components/ProspectRow";
 import ProspectModal from "@/components/ProspectModal";
 import AddContactModal from "@/components/AddContactModal";
 import { useProspects } from "@/lib/useProspects";
+import { useFavorites } from "@/lib/useFavorites";
 import { rScore } from "@/lib/rscore";
 import type { Prospect } from "@/lib/types";
 
@@ -12,7 +13,7 @@ type SortDir = "asc" | "desc";
 
 const SORT_OPTIONS: { key: SortKey; label: string }[] = [
   { key: "signal",    label: "Signal Score" },
-  { key: "rscore",    label: "R-Score" },
+  { key: "rscore",    label: "Priority" },
   { key: "name",      label: "Name A–Z" },
   { key: "company",   label: "Company" },
   { key: "lastTouch", label: "Last Touch" },
@@ -23,12 +24,12 @@ function sortProspects(prospects: Prospect[], key: SortKey, dir: SortDir): Prosp
   const sorted = [...prospects].sort((a, b) => {
     let va: number | string, vb: number | string;
     switch (key) {
-      case "signal":    va = a.signalStack;       vb = b.signalStack;       break;
-      case "rscore":    va = rScore(a);           vb = rScore(b);           break;
-      case "name":      va = a.name.toLowerCase();vb = b.name.toLowerCase();break;
+      case "signal":    va = a.signalStack;        vb = b.signalStack;        break;
+      case "rscore":    va = rScore(a);            vb = rScore(b);            break;
+      case "name":      va = a.name.toLowerCase(); vb = b.name.toLowerCase(); break;
       case "company":   va = a.company.toLowerCase(); vb = b.company.toLowerCase(); break;
-      case "lastTouch": va = a.lastTouchDaysAgo;  vb = b.lastTouchDaysAgo;  break;
-      case "intent":    va = a.intentVelocity;    vb = b.intentVelocity;    break;
+      case "lastTouch": va = a.lastTouchDaysAgo;   vb = b.lastTouchDaysAgo;   break;
+      case "intent":    va = a.intentVelocity;     vb = b.intentVelocity;     break;
     }
     if (va < vb) return -1;
     if (va > vb) return  1;
@@ -38,23 +39,44 @@ function sortProspects(prospects: Prospect[], key: SortKey, dir: SortDir): Prosp
 }
 
 export default function ProspectsPage() {
-  const { prospects, source, refetch } = useProspects();
-  const [sweeping, setSweeping] = useState(false);
-  const [sweepMsg, setSweepMsg] = useState("");
-  const [sortKey, setSortKey]   = useState<SortKey>("signal");
-  const [sortDir, setSortDir]   = useState<SortDir>("desc");
-  const [modal, setModal]         = useState<Prospect | null>(null);
-  const [addOpen, setAddOpen]     = useState(false);
+  const { prospects, source, refetch }    = useProspects();
+  const { isFavorite, toggleFavorite }    = useFavorites();
+  const [sweeping, setSweeping]           = useState(false);
+  const [sweepMsg, setSweepMsg]           = useState("");
+  const [sortKey, setSortKey]             = useState<SortKey>("rscore");
+  const [sortDir, setSortDir]             = useState<SortDir>("desc");
+  const [modal, setModal]                 = useState<Prospect | null>(null);
+  const [addOpen, setAddOpen]             = useState(false);
+  const [search, setSearch]               = useState("");
+  const [favsOnly, setFavsOnly]           = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
-  const sorted = sortProspects(prospects, sortKey, sortDir);
+  // Sort → search filter → favorites filter
+  const sorted   = sortProspects(prospects, sortKey, sortDir);
+  const searched = search.trim()
+    ? sorted.filter(p => {
+        const q = search.toLowerCase();
+        return (
+          p.name.toLowerCase().includes(q) ||
+          p.company.toLowerCase().includes(q) ||
+          (p.title     ?? "").toLowerCase().includes(q) ||
+          (p.industry  ?? "").toLowerCase().includes(q)
+        );
+      })
+    : sorted;
+  // Favorites pinned to top, then rest
+  const display = favsOnly
+    ? searched.filter(p => isFavorite(p.id))
+    : [
+        ...searched.filter(p =>  isFavorite(p.id)),
+        ...searched.filter(p => !isFavorite(p.id)),
+      ];
 
   function toggleSort(key: SortKey) {
     if (sortKey === key) {
       setSortDir(d => d === "desc" ? "asc" : "desc");
     } else {
       setSortKey(key);
-      // Name/company default asc; scores default desc; lastTouch default asc
       setSortDir(key === "name" || key === "company" ? "asc" : key === "lastTouch" ? "asc" : "desc");
     }
   }
@@ -93,6 +115,8 @@ export default function ProspectsPage() {
     e.target.value = "";
   }
 
+  const favCount = prospects.filter(p => isFavorite(p.id)).length;
+
   return (
     <>
       {/* Modals */}
@@ -110,9 +134,9 @@ export default function ProspectsPage() {
           <h1 className="page-title">Prospects</h1>
           <p className="page-sub">
             {source === "supabase"
-              ? `${prospects.length} accounts · Live from Supabase`
+              ? `${prospects.length} contacts · Live from Supabase`
               : source === "loading" ? "Loading…"
-              : `${prospects.length} accounts`}
+              : `${prospects.length} contacts`}
           </p>
         </div>
         <div className="topbar-actions">
@@ -128,6 +152,61 @@ export default function ProspectsPage() {
         </div>
       </div>
 
+      {/* Search + favorites row */}
+      <div style={{ display: "flex", gap: 8, marginBottom: 12, alignItems: "center" }}>
+        <div style={{ position: "relative", flex: 1 }}>
+          <span style={{
+            position: "absolute", left: 11, top: "50%", transform: "translateY(-50%)",
+            fontSize: 14, color: "var(--text-3)", pointerEvents: "none",
+          }}>
+            🔍
+          </span>
+          <input
+            type="text"
+            placeholder="Search by name, company, title, industry…"
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            style={{
+              width: "100%", padding: "9px 36px 9px 34px",
+              borderRadius: 10, border: "1px solid var(--line-2)",
+              background: "var(--bg-2)", color: "var(--text-0)",
+              fontSize: 13.5, outline: "none", boxSizing: "border-box",
+              transition: "border-color 0.15s",
+            }}
+            onFocus={e => (e.target.style.borderColor = "var(--accent)")}
+            onBlur={e  => (e.target.style.borderColor = "var(--line-2)")}
+          />
+          {search && (
+            <button
+              onClick={() => setSearch("")}
+              style={{
+                position: "absolute", right: 8, top: "50%", transform: "translateY(-50%)",
+                background: "none", border: "none", cursor: "pointer",
+                color: "var(--text-3)", fontSize: 17, lineHeight: 1, padding: "2px 4px",
+              }}
+            >
+              ×
+            </button>
+          )}
+        </div>
+
+        <button
+          onClick={() => setFavsOnly(f => !f)}
+          style={{
+            display: "flex", alignItems: "center", gap: 5,
+            padding: "8px 14px", borderRadius: 10, border: "1px solid",
+            borderColor: favsOnly ? "rgba(245,158,11,0.5)" : "var(--line-2)",
+            background: favsOnly ? "rgba(245,158,11,0.08)" : "var(--bg-2)",
+            color: favsOnly ? "#f59e0b" : "var(--text-2)",
+            fontSize: 12.5, fontWeight: favsOnly ? 600 : 400, cursor: "pointer",
+            transition: "all 0.15s", whiteSpace: "nowrap",
+          }}
+        >
+          <span>{favsOnly ? "★" : "☆"}</span>
+          Favorites{favCount > 0 && <span style={{ opacity: 0.7 }}> · {favCount}</span>}
+        </button>
+      </div>
+
       {/* Sort bar */}
       <div style={{ display: "flex", gap: 6, marginBottom: 16, flexWrap: "wrap", alignItems: "center" }}>
         <span style={{ fontSize: 11.5, color: "var(--text-3)", textTransform: "uppercase", letterSpacing: "0.08em", marginRight: 4 }}>
@@ -140,10 +219,7 @@ export default function ProspectsPage() {
               key={opt.key}
               onClick={() => toggleSort(opt.key)}
               style={{
-                padding: "5px 12px",
-                borderRadius: 20,
-                fontSize: 12,
-                cursor: "pointer",
+                padding: "5px 12px", borderRadius: 20, fontSize: 12, cursor: "pointer",
                 border: `1px solid ${active ? "var(--accent)" : "var(--line-2)"}`,
                 background: active ? "var(--accent)" : "var(--bg-2)",
                 color: active ? "#fff" : "var(--text-2)",
@@ -153,14 +229,12 @@ export default function ProspectsPage() {
               }}
             >
               {opt.label}
-              {active && (
-                <span style={{ fontSize: 10 }}>{sortDir === "desc" ? "↓" : "↑"}</span>
-              )}
+              {active && <span style={{ fontSize: 10 }}>{sortDir === "desc" ? "↓" : "↑"}</span>}
             </button>
           );
         })}
         <span style={{ marginLeft: "auto", fontSize: 11.5, color: "var(--text-3)" }}>
-          {sorted.length} contacts
+          {display.length}{display.length !== prospects.length ? ` of ${prospects.length}` : ""} contacts
         </span>
       </div>
 
@@ -177,25 +251,25 @@ export default function ProspectsPage() {
         <div style={{
           display: "grid",
           gridTemplateColumns: "3fr 1.2fr 0.9fr 1.4fr 90px",
-          gap: 16,
-          padding: "8px 20px",
+          gap: 16, padding: "8px 20px",
           borderBottom: "1px solid var(--line)",
-          fontSize: 10.5,
-          textTransform: "uppercase",
-          letterSpacing: "0.08em",
-          color: "var(--text-3)",
+          fontSize: 10.5, textTransform: "uppercase",
+          letterSpacing: "0.08em", color: "var(--text-3)",
         }}>
           {[
-            { label: "Contact",   key: "name"      as SortKey },
+            { label: "Contact",   key: "name"    as SortKey },
             { label: "NSS State", key: null },
-            { label: "R-Score",   key: "rscore"    as SortKey },
+            { label: "Priority",  key: "rscore"  as SortKey },
             { label: "Next Move", key: null },
             { label: "",          key: null },
           ].map((col, i) => (
             <div
               key={i}
-              style={{ cursor: col.key ? "pointer" : "default", userSelect: "none",
-                color: col.key && sortKey === col.key ? "var(--accent)" : undefined }}
+              style={{
+                cursor: col.key ? "pointer" : "default",
+                userSelect: "none",
+                color: col.key && sortKey === col.key ? "var(--accent)" : undefined,
+              }}
               onClick={() => col.key && toggleSort(col.key)}
             >
               {col.label}
@@ -208,10 +282,20 @@ export default function ProspectsPage() {
 
         {source === "loading"
           ? <div className="empty">Loading prospects…</div>
-          : sorted.length === 0
+          : display.length === 0 && search
+          ? <div className="empty">No contacts match "{search}"</div>
+          : display.length === 0 && favsOnly
+          ? <div className="empty">No favorites yet — star a contact to pin them here.</div>
+          : display.length === 0
           ? <div className="empty">No prospects yet — import a list to get started.</div>
-          : sorted.map(p => (
-              <ProspectRow key={p.id} p={p} onAct={setModal} />
+          : display.map(p => (
+              <ProspectRow
+                key={p.id}
+                p={p}
+                onAct={setModal}
+                isFavorited={isFavorite(p.id)}
+                onFavorite={toggleFavorite}
+              />
             ))}
       </div>
     </>
