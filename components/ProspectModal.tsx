@@ -372,21 +372,253 @@ function EmailScriptPanel({ prospect }: { prospect: Prospect }) {
   );
 }
 
+// ── Signal Script panel (PressureIQ / BurnoutIQ) ─────────────────────────────
+
+function SignalScriptPanel({ prospect }: { prospect: Prospect }) {
+  const hasPressure = prospect.timingWindow >= 60 || prospect.intentVelocity >= 70;
+  const hasBurnout  = prospect.state === "dorsal" && prospect.lastTouchDaysAgo >= 21;
+  const first       = prospect.name.split(" ")[0];
+
+  type Mode = "pressure" | "burnout";
+  const [mode, setMode]   = useState<Mode>(hasPressure ? "pressure" : "burnout");
+  const [step, setStep]   = useState(0);
+  const [copied, setCopied] = useState(false);
+
+  function fill(text: string) {
+    return text
+      .replace(/\[Name\]/g, first)
+      .replace(/\[Company\]/g, prospect.company)
+      .replace(/\[Industry\]/g, prospect.industry || "your sector")
+      .replace(/\[Days\]/g, String(prospect.lastTouchDaysAgo));
+  }
+
+  const PRESSURE_STEPS = [
+    {
+      label: "Pattern interrupt",
+      emoji: "⚡",
+      tip: "Skip the pleasantries — they're in a decision window. Name the moment.",
+      text: `Hey [Name], I'm going to skip the usual part of the call. I've been paying attention to what's happening at [Company] and I think there's a specific reason — right now, not in six months — that a conversation makes sense. You have two minutes?`,
+    },
+    {
+      label: "Name the pressure",
+      emoji: "🎯",
+      tip: "Lead with what the signals say. You're not guessing — you're reflecting.",
+      text: `Here's what I'm picking up on. You're at a point in the year where staffing decisions start happening — good people are weighing their options, administrators are looking at what's working, and something's usually sitting on somebody's desk that hasn't been addressed yet. Is any of that landing right now?`,
+    },
+    {
+      label: "Pressure discovery",
+      emoji: "🔍",
+      tip: "Ask about the thing with a deadline. Urgency-aware discovery.",
+      text: `What's the most pressing thing on your plate right now — specifically the thing that has a clock on it? The one that if you don't move on it this semester it gets harder? I want to understand that before I say anything about what we do.`,
+    },
+    {
+      label: "Bridge to now",
+      emoji: "🌉",
+      tip: "Connect their urgency to your speed. You move fast — most programs don't.",
+      text: `That's exactly the kind of situation where timing matters for what we do. Most things in this space take months to spin up. What we do is designed to move. I can show you an organization that was in your exact position and what they did in 90 days. Can we find 20 minutes this week?`,
+    },
+    {
+      label: "Tight close",
+      emoji: "🤙",
+      tip: "Specific ask. They're in a window — don't leave it open-ended.",
+      text: `I'm not going to sell you anything today. I want to put one case study in front of you — matches what you just described — and let you decide if there's a conversation worth having. Is this week better or early next?`,
+    },
+  ];
+
+  const BURNOUT_STEPS = [
+    {
+      label: "Human first",
+      emoji: "🤝",
+      tip: "Do NOT pitch. Something shifted. Lead with care — if you pitch now you're done.",
+      text: `Hey [Name], this is Chris Davis — I'm not calling to pitch you anything. I noticed it's been a while since we connected and I just wanted to check in. Not on the business side. How are things actually going over there?`,
+    },
+    {
+      label: "Name the silence",
+      emoji: "🌑",
+      tip: "Name what you're observing without making them feel bad about it.",
+      text: `I ask because what I'm seeing at a lot of [Industry] right now is that the people running things are carrying more than they're letting on. And when I stop hearing from someone I've been in conversation with, it's usually not because things got easier.`,
+    },
+    {
+      label: "Real question",
+      emoji: "🔍",
+      tip: "One honest question. Give them room to say something real.",
+      text: `How is your staff actually doing right now? Not the official answer — what's it like in the building? Because if things have gotten harder since we last talked, I want to know that before I say anything else.`,
+    },
+    {
+      label: "Soft bridge",
+      emoji: "🌉",
+      tip: "Only go here if they opened up. Don't force it. Match their energy.",
+      text: `What you just described — I hear that constantly right now. And what I've seen is that the organizations that wait for it to get better on its own usually don't find that it does. I'm not asking you to commit to anything. I just want to know if it's worth staying in your world for when the timing shifts.`,
+    },
+    {
+      label: "No-pressure close",
+      emoji: "🌱",
+      tip: "A yes to staying connected is the win here. That's all.",
+      text: `I don't need a decision on anything. I just want to know: is it worth me checking back in a few weeks? If the answer is yes, I'll be here. If the answer is no, just say so and I'll leave you alone.`,
+    },
+  ];
+
+  const steps = mode === "pressure" ? PRESSURE_STEPS : BURNOUT_STEPS;
+
+  function copyStep() {
+    navigator.clipboard.writeText(fill(steps[step].text)).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    });
+  }
+
+  return (
+    <div style={{ padding: "16px 0" }}>
+      {/* Which signals are active */}
+      <div style={{ display: "flex", gap: 8, marginBottom: 14, flexWrap: "wrap" }}>
+        {hasPressure && (
+          <div style={{
+            padding: "8px 12px", borderRadius: 8, flex: 1, minWidth: 160,
+            background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.25)",
+          }}>
+            <div style={{ fontSize: 10.5, textTransform: "uppercase", letterSpacing: "0.08em", color: "#ef4444", fontWeight: 700, marginBottom: 2 }}>
+              🔴 PressureIQ active
+            </div>
+            <div style={{ fontSize: 11.5, color: "var(--text-2)" }}>
+              {prospect.timingWindow >= 60 ? `Timing window: ${prospect.timingWindow}` : ""}
+              {prospect.timingWindow >= 60 && prospect.intentVelocity >= 70 ? " · " : ""}
+              {prospect.intentVelocity >= 70 ? `Intent: ${prospect.intentVelocity}` : ""}
+            </div>
+          </div>
+        )}
+        {hasBurnout && (
+          <div style={{
+            padding: "8px 12px", borderRadius: 8, flex: 1, minWidth: 160,
+            background: "rgba(245,158,11,0.08)", border: "1px solid rgba(245,158,11,0.25)",
+          }}>
+            <div style={{ fontSize: 10.5, textTransform: "uppercase", letterSpacing: "0.08em", color: "#f59e0b", fontWeight: 700, marginBottom: 2 }}>
+              🟡 BurnoutIQ active
+            </div>
+            <div style={{ fontSize: 11.5, color: "var(--text-2)" }}>
+              Gone quiet · {prospect.lastTouchDaysAgo}d since last touch
+            </div>
+          </div>
+        )}
+        {!hasPressure && !hasBurnout && (
+          <div style={{
+            padding: "8px 12px", borderRadius: 8,
+            background: "var(--bg-2)", border: "1px solid var(--line-2)",
+            fontSize: 12, color: "var(--text-3)",
+          }}>
+            No active signal detected — scripts shown for general context
+          </div>
+        )}
+      </div>
+
+      {/* Mode toggle if both signals active */}
+      {hasPressure && hasBurnout && (
+        <div style={{ display: "flex", gap: 6, marginBottom: 14 }}>
+          <button
+            onClick={() => { setMode("pressure"); setStep(0); }}
+            style={{
+              padding: "5px 14px", borderRadius: 20, fontSize: 12, cursor: "pointer",
+              border: `1px solid ${mode === "pressure" ? "#ef4444" : "var(--line-2)"}`,
+              background: mode === "pressure" ? "rgba(239,68,68,0.1)" : "var(--bg-3)",
+              color: mode === "pressure" ? "#ef4444" : "var(--text-2)",
+              fontWeight: mode === "pressure" ? 700 : 400,
+            }}
+          >
+            🔴 PressureIQ
+          </button>
+          <button
+            onClick={() => { setMode("burnout"); setStep(0); }}
+            style={{
+              padding: "5px 14px", borderRadius: 20, fontSize: 12, cursor: "pointer",
+              border: `1px solid ${mode === "burnout" ? "#f59e0b" : "var(--line-2)"}`,
+              background: mode === "burnout" ? "rgba(245,158,11,0.1)" : "var(--bg-3)",
+              color: mode === "burnout" ? "#f59e0b" : "var(--text-2)",
+              fontWeight: mode === "burnout" ? 700 : 400,
+            }}
+          >
+            🟡 BurnoutIQ
+          </button>
+        </div>
+      )}
+
+      {/* Step tabs */}
+      <div style={{ display: "flex", gap: 5, marginBottom: 10, flexWrap: "wrap" }}>
+        {steps.map((s, i) => {
+          const activeColor = mode === "pressure" ? "#ef4444" : "#f59e0b";
+          return (
+            <button key={i} onClick={() => setStep(i)} style={{
+              padding: "5px 10px", borderRadius: 6, fontSize: 11.5, cursor: "pointer",
+              border: `1px solid ${step === i ? activeColor : "var(--line-2)"}`,
+              background: step === i ? activeColor + "18" : "var(--bg-3)",
+              color: step === i ? activeColor : "var(--text-2)",
+              fontWeight: step === i ? 700 : 400,
+              display: "flex", alignItems: "center", gap: 4,
+            }}>
+              <span>{s.emoji}</span> {s.label}
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Tip */}
+      <div style={{
+        padding: "7px 12px", borderRadius: 7, marginBottom: 10,
+        background: "var(--bg-2)", border: "1px solid var(--line)",
+        fontSize: 11.5, color: "var(--text-3)", fontStyle: "italic",
+      }}>
+        💡 {steps[step].tip}
+      </div>
+
+      {/* Script text */}
+      <div style={{
+        padding: "18px 20px", borderRadius: 10, marginBottom: 12,
+        background: "var(--bg-2)", border: "1px solid var(--line)",
+        fontSize: 14.5, lineHeight: 1.9, color: "var(--text-0)",
+        fontStyle: "italic", minHeight: 90, whiteSpace: "pre-wrap",
+      }}>
+        "{fill(steps[step].text)}"
+      </div>
+
+      {/* Nav + copy */}
+      <div style={{ display: "flex", gap: 8, marginBottom: 8 }}>
+        <button className="btn" onClick={() => setStep(Math.max(0, step - 1))} disabled={step === 0}>← Back</button>
+        <button
+          className="btn btn-primary"
+          style={{ background: mode === "pressure" ? "#dc2626" : "#d97706", borderColor: mode === "pressure" ? "#dc2626" : "#d97706" }}
+          onClick={() => setStep(Math.min(steps.length - 1, step + 1))}
+          disabled={step === steps.length - 1}
+        >
+          Next →
+        </button>
+        <button className="btn" style={{ marginLeft: "auto" }} onClick={copyStep}>
+          {copied ? "✓ Copied" : "Copy"}
+        </button>
+        <span style={{ fontSize: 11, color: "var(--text-3)", alignSelf: "center" }}>
+          {step + 1} / {steps.length}
+        </span>
+      </div>
+    </div>
+  );
+}
+
 // ── Main Modal ────────────────────────────────────────────────────────────────
 
 type Tab = "actions" | "compose" | "history";
 
 interface Props {
-  prospect: Prospect;
-  onClose: () => void;
+  prospect:   Prospect;
+  onClose:    () => void;
+  onDeleted?: () => void;
 }
 
-export default function ProspectModal({ prospect: initialProspect, onClose }: Props) {
+export default function ProspectModal({ prospect: initialProspect, onClose, onDeleted }: Props) {
   const [prospect, setProspect] = useState(initialProspect);
   const [tab, setTab]             = useState<Tab>("actions");
-  const [showScript, setShowScript]         = useState(false);
+  const [showScript, setShowScript]           = useState(false);
   const [showEmailScript, setShowEmailScript] = useState(false);
+  const [showSignalScript, setShowSignalScript] = useState(false);
   const [showScoreDetail, setShowScoreDetail] = useState(false);
+  const [confirmDelete, setConfirmDelete]     = useState(false);
+  const [deleting, setDeleting]               = useState(false);
   const backdropRef = useRef<HTMLDivElement>(null);
 
   // Sync if parent re-passes a new prospect
@@ -401,6 +633,20 @@ export default function ProspectModal({ prospect: initialProspect, onClose }: Pr
         setProspect(updated);
       }
     } catch { /* keep current state */ }
+  }
+
+  async function deleteContact() {
+    setDeleting(true);
+    try {
+      const res = await fetch(`/api/contacts/${prospect.id}`, { method: "DELETE" });
+      if (res.ok) {
+        onDeleted?.();
+        onClose();
+      }
+    } catch {
+      setDeleting(false);
+      setConfirmDelete(false);
+    }
   }
 
   // Close on Escape
@@ -568,11 +814,71 @@ export default function ProspectModal({ prospect: initialProspect, onClose }: Pr
             Call script
           </button>
 
+          {/* Signal script — PressureIQ / BurnoutIQ */}
+          {(() => {
+            const hasPressure = prospect.timingWindow >= 60 || prospect.intentVelocity >= 70;
+            const hasBurnout  = prospect.state === "dorsal" && prospect.lastTouchDaysAgo >= 21;
+            const hasSignal   = hasPressure || hasBurnout;
+            const signalColor = hasPressure ? "#ef4444" : "#f59e0b";
+            return (
+              <button
+                style={{
+                  ...ACTION_BTN,
+                  background: showSignalScript
+                    ? (hasPressure ? "rgba(239,68,68,0.12)" : "rgba(245,158,11,0.12)")
+                    : "var(--bg-2)",
+                  borderColor: showSignalScript ? signalColor : hasSignal ? signalColor + "60" : "var(--line-2)",
+                  color: showSignalScript ? signalColor : hasSignal ? signalColor : "var(--text-2)",
+                  position: "relative",
+                }}
+                onClick={() => { setShowSignalScript(s => !s); setShowScript(false); setShowEmailScript(false); }}
+                title="PressureIQ / BurnoutIQ signal-based selling scripts"
+              >
+                {hasSignal && !showSignalScript && (
+                  <span style={{
+                    position: "absolute", top: 6, right: 6,
+                    width: 7, height: 7, borderRadius: "50%",
+                    background: signalColor, border: "1.5px solid var(--bg-1)",
+                  }} />
+                )}
+                <span style={{ fontSize: 18 }}>{hasBurnout && !hasPressure ? "🟡" : "🔴"}</span>
+                Signal script
+              </button>
+            );
+          })()}
+
           {/* Export */}
           <button style={ACTION_BTN} onClick={exportCSV}>
             <span style={{ fontSize: 18 }}>📤</span>
             Export
           </button>
+
+          {/* Delete */}
+          {!confirmDelete ? (
+            <button
+              style={{ ...ACTION_BTN, color: "var(--text-3)", marginLeft: "auto" }}
+              onClick={() => setConfirmDelete(true)}
+              title="Delete this contact"
+            >
+              <span style={{ fontSize: 18 }}>🗑</span>
+              Delete
+            </button>
+          ) : (
+            <div style={{ marginLeft: "auto", display: "flex", gap: 6, alignItems: "center" }}>
+              <span style={{ fontSize: 11.5, color: "var(--text-2)" }}>Remove {prospect.name}?</span>
+              <button
+                className="btn"
+                style={{ padding: "6px 12px", fontSize: 12, background: "#ef4444", color: "#fff", border: "none", opacity: deleting ? 0.6 : 1 }}
+                onClick={deleteContact}
+                disabled={deleting}
+              >
+                {deleting ? "Deleting…" : "Yes, delete"}
+              </button>
+              <button className="btn" style={{ padding: "6px 12px", fontSize: 12 }} onClick={() => setConfirmDelete(false)}>
+                Cancel
+              </button>
+            </div>
+          )}
         </div>
 
         {/* ── Email script panel (collapsible) ───────────────── */}
@@ -586,6 +892,13 @@ export default function ProspectModal({ prospect: initialProspect, onClose }: Pr
         {showScript && (
           <div style={{ padding: "0 24px", borderBottom: "1px solid var(--line)" }}>
             <CallScriptPanel prospect={prospect} />
+          </div>
+        )}
+
+        {/* ── Signal script panel — PressureIQ / BurnoutIQ ───── */}
+        {showSignalScript && (
+          <div style={{ padding: "0 24px", borderBottom: "1px solid var(--line)" }}>
+            <SignalScriptPanel prospect={prospect} />
           </div>
         )}
 

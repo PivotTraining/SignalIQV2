@@ -120,7 +120,13 @@ export default function ProspectsPage() {
   return (
     <>
       {/* Modals */}
-      {modal && <ProspectModal prospect={modal} onClose={() => setModal(null)} />}
+      {modal && (
+        <ProspectModal
+          prospect={modal}
+          onClose={() => setModal(null)}
+          onDeleted={() => { setModal(null); refetch(); }}
+        />
+      )}
       {addOpen && (
         <AddContactModal
           onClose={() => setAddOpen(false)}
