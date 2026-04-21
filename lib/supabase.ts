@@ -58,6 +58,8 @@ function mapRow(row: any, interactions: Interaction[]): Prospect {
     name:                 (row.name          ?? "Unknown")  as string,
     title:                (row.title         ?? "")         as string,
     company:              (row.company       ?? "")         as string,
+    email:                (row.email         ?? null)       as string | null,
+    phone:                (row.phone         ?? null)       as string | null,
     headcount:            Number(row.headcount ?? 0),
     initials:             (row.name ?? "??").split(" ").filter(Boolean).map((w: string) => w[0]).join("").slice(0, 2).toUpperCase(),
     industry:             (row.industry      ?? "")         as string,
@@ -101,7 +103,7 @@ function mapInteraction(row: any): Interaction & { depth: number } {
 export async function fetchProspects(): Promise<Prospect[]> {
   const { data: contacts, error: ce } = await db()
     .from("contacts")
-    .select("*")
+    .select("*, email, phone")
     .order("last_touch", { ascending: false });
 
   if (ce) throw ce;

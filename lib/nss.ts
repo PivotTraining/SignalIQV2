@@ -64,15 +64,22 @@ export function inferState(interactions: Interaction[]): {
 function round(n: number) { return Math.round(n * 100) / 100; }
 
 export const stateLabel: Record<NSS, string> = {
-  ventral: "Ventral Vagal",
-  sympathetic: "Sympathetic",
-  dorsal: "Dorsal Vagal",
+  ventral:     "Engaged",
+  sympathetic: "Cautious",
+  dorsal:      "Quiet",
 };
 
 export const stateShort: Record<NSS, string> = {
-  ventral: "Ventral",
-  sympathetic: "Sympathetic",
-  dorsal: "Dorsal",
+  ventral:     "Engaged",
+  sympathetic: "Cautious",
+  dorsal:      "Quiet",
+};
+
+// Internal polyvagal names — used in call scripts and guide for context
+export const stateScience: Record<NSS, string> = {
+  ventral:     "Ventral Vagal",
+  sympathetic: "Sympathetic Activation",
+  dorsal:      "Dorsal Vagal",
 };
 
 export const stateCode: Record<NSS, "v" | "s" | "d"> = {
@@ -82,13 +89,13 @@ export const stateCode: Record<NSS, "v" | "s" | "d"> = {
 };
 
 export const nextMoveFor: Record<NSS, string> = {
-  ventral: "Direct value ask. Meeting invite. Pricing conversation.",
-  sympathetic: "Pattern interrupt. Curiosity hook. Zero-pressure acknowledgment.",
-  dorsal: "Permission-to-reconnect message. No ask. Low-stakes re-entry.",
+  ventral:     "They're ready to move. Ask directly, invite to a meeting, or open the pricing conversation.",
+  sympathetic: "They're on edge. Don't pitch — send a curiosity hook or pattern interrupt. Make it safe.",
+  dorsal:      "They've gone quiet. Send a low-pressure check-in, no ask, just permission to reconnect.",
 };
 
 export const forbiddenFor: Record<NSS, string> = {
-  ventral: "Over-nurturing. Redundant check-ins.",
-  sympathetic: "Pitch decks. Feature lists. Hard CTAs.",
-  dorsal: "Any ask. Any urgency. Any 'just checking in'.",
+  ventral:     "Over-nurturing or redundant check-ins — they're ready, don't slow them down.",
+  sympathetic: "Pitch decks, feature lists, or hard CTAs — pressure makes it worse.",
+  dorsal:      "Any ask, any urgency, or 'just checking in' — it'll push them further away.",
 };

@@ -22,6 +22,8 @@ export type Prospect = {
   name: string;
   title: string;
   company: string;
+  email: string | null;
+  phone: string | null;
   headcount: number;
   initials: string;
   industry: string;

@@ -116,7 +116,8 @@ create policy "anon read owners"        on owners        for select using (true)
 create policy "anon read tags"          on tags          for select using (true);
 create policy "anon read contact_tags"  on contact_tags  for select using (true);
 
--- Allow anon key to insert interactions and update contacts
+-- Allow anon key to insert/update contacts and log interactions
+create policy "anon insert contacts"     on contacts     for insert with check (true);
 create policy "anon insert interactions" on interactions for insert with check (true);
 create policy "anon update contacts"     on contacts     for update using (true);
 create policy "anon insert signal_logs"  on signal_logs  for insert with check (true);

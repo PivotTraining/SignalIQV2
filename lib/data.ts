@@ -26,6 +26,8 @@ const raw: Omit<Prospect, "state" | "stateConfidence">[] = [
       { id: "m2", channel: "email", direction: "in", at: "2026-04-10", latencyHours: 2, body: "Why would I need another tool? We already have Apollo. Prove it." },
       { id: "m3", channel: "email", direction: "out", at: "2026-04-12", body: "Fair question. Not a pitch — a 30-second read on why three of your peers dropped Apollo this quarter." },
     ],
+    email: null,
+    phone: null,
     lastTouchDaysAgo: 1,
   },
   {
@@ -50,6 +52,8 @@ const raw: Omit<Prospect, "state" | "stateConfidence">[] = [
       { id: "k1", channel: "email", direction: "out", at: "2026-04-08", body: "Keira — I read your post on GTM for zero-to-one AI. Two things we should talk about." },
       { id: "k2", channel: "email", direction: "in", at: "2026-04-08", latencyHours: 5, body: "Let's do it. How do we move from here? I have Thursday or Friday afternoon ET. Happy to jump on 30 min." },
     ],
+    email: null,
+    phone: null,
     lastTouchDaysAgo: 0,
   },
   {
@@ -74,6 +78,8 @@ const raw: Omit<Prospect, "state" | "stateConfidence">[] = [
       { id: "j2", channel: "email", direction: "in", at: "2026-04-02", latencyHours: 22, body: "ok" },
       { id: "j3", channel: "email", direction: "out", at: "2026-04-08", body: "Following up." },
     ],
+    email: null,
+    phone: null,
     lastTouchDaysAgo: 9,
   },
   {
@@ -97,6 +103,8 @@ const raw: Omit<Prospect, "state" | "stateConfidence">[] = [
       { id: "a1", channel: "email", direction: "out", at: "2026-04-11", body: "Ana — the RevOps req tells me where you're pointing. Want the three-week rollout plan?" },
       { id: "a2", channel: "email", direction: "in", at: "2026-04-12", latencyHours: 26, body: "Yes please. Let's set up a time next week — how do we move forward on pricing?" },
     ],
+    email: null,
+    phone: null,
     lastTouchDaysAgo: 2,
   },
   {
@@ -119,6 +127,8 @@ const raw: Omit<Prospect, "state" | "stateConfidence">[] = [
       { id: "d1", channel: "email", direction: "out", at: "2026-04-03", body: "Diego — sharing a note on indie GTM when you're past the $10K line." },
       { id: "d2", channel: "email", direction: "in", at: "2026-04-04", latencyHours: 18, body: "Thanks, appreciate you thinking of me. Maybe later when we hit the next milestone." },
     ],
+    email: null,
+    phone: null,
     lastTouchDaysAgo: 13,
   },
   {
@@ -141,6 +151,8 @@ const raw: Omit<Prospect, "state" | "stateConfidence">[] = [
       { id: "p1", channel: "email", direction: "out", at: "2026-04-09", body: "Priya — board-ready pipeline view in 14 days. Interested?" },
       { id: "p2", channel: "email", direction: "in", at: "2026-04-09", latencyHours: 1, body: "Send ASAP. No time. What's the price!!" },
     ],
+    email: null,
+    phone: null,
     lastTouchDaysAgo: 2,
   },
 ];

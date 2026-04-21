@@ -6,7 +6,13 @@ import { stateCode } from "@/lib/nss";
 
 type Candidate = { archetype: string; body: string };
 
-export default function Composer({ prospect }: { prospect: Prospect }) {
+function emailSubject(state: string): string {
+  if (state === "ventral")     return "Quick follow-up from Pivot Training";
+  if (state === "sympathetic") return "Something a little different from Pivot Training";
+  return "No agenda — just reaching back out";
+}
+
+export default function Composer({ prospect, email }: { prospect: Prospect; email?: string | null }) {
   const [candidates, setCandidates] = useState<Candidate[]>([]);
   const [active, setActive] = useState(0);
   const [draft, setDraft] = useState("");
@@ -16,11 +22,12 @@ export default function Composer({ prospect }: { prospect: Prospect }) {
   async function load() {
     setLoading(true);
     setSent(null);
-    const res = await fetch(`/api/messages?id=${prospect.id}`, { cache: "no-store" });
+    const res  = await fetch(`/api/messages?id=${prospect.id}`, { cache: "no-store" });
     const data = await res.json();
-    setCandidates(data.candidates);
+    const list: Candidate[] = Array.isArray(data.candidates) ? data.candidates : [];
+    setCandidates(list);
     setActive(0);
-    setDraft(data.candidates[0]?.body ?? "");
+    setDraft(list[0]?.body ?? "");
     setLoading(false);
   }
 
@@ -66,8 +73,19 @@ export default function Composer({ prospect }: { prospect: Prospect }) {
 
           <div className="composer-actions">
             <button className="btn btn-primary"
-              onClick={() => setSent("approved")}>
-              Approve & send
+              onClick={() => {
+                const to = email ?? prospect.email ?? "";
+                if (to) {
+                  const subject = encodeURIComponent(emailSubject(prospect.state));
+                  const body    = encodeURIComponent(draft);
+                  window.open(`mailto:${to}?subject=${subject}&body=${body}`, "_self");
+                } else {
+                  // No email — copy to clipboard
+                  navigator.clipboard?.writeText(draft).catch(() => {});
+                }
+                setSent("approved");
+              }}>
+              {(email ?? (prospect as { email?: string | null }).email) ? "Approve & send ↗" : "Copy draft"}
             </button>
             <button className="btn" onClick={() => setSent("adapted")}>
               Save as draft

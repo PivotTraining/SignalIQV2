@@ -19,6 +19,48 @@
     --glow-s: 0 0 30px rgba(245, 158, 11, 0.35);
     --glow-d: 0 0 30px rgba(96, 165, 250, 0.35);
   }
+  html.light {
+    --bg-0: #f8fafc;
+    --bg-1: #ffffff;
+    --bg-2: #f1f5f9;
+    --bg-3: #e2e8f0;
+    --line: rgba(0,0,0,0.07);
+    --line-2: rgba(0,0,0,0.14);
+    --text-0: #0f172a;
+    --text-1: #334155;
+    --text-2: #64748b;
+    --text-3: #94a3b8;
+    --accent: #7c5cff;
+    --accent-2: #0ea5e9;
+    --ventral: #10b981;
+    --sympathetic: #d97706;
+    --dorsal: #3b82f6;
+    --danger: #ef4444;
+    --glow-v: 0 0 20px rgba(16,185,129,0.25);
+    --glow-s: 0 0 20px rgba(217,119,6,0.25);
+    --glow-d: 0 0 20px rgba(59,130,246,0.25);
+  }
+  html.light body {
+    background: var(--bg-0);
+    color: var(--text-0);
+  }
+  html.light body::before {
+    background:
+      radial-gradient(ellipse 800px 600px at 15% 10%, rgba(124,92,255,0.06), transparent 60%),
+      radial-gradient(ellipse 600px 400px at 85% 30%, rgba(14,165,233,0.05), transparent 60%),
+      radial-gradient(ellipse 700px 500px at 50% 100%, rgba(124,92,255,0.04), transparent 60%);
+  }
+  html.light .sidebar {
+    background: rgba(255,255,255,0.85);
+    border-right-color: var(--line);
+  }
+  html.light .btn {
+    background: var(--bg-2);
+    border-color: var(--line-2);
+    color: var(--text-0);
+  }
+  html.light .btn:hover { background: var(--bg-3); }
+  html.light .logo-mark::after { background: var(--bg-1); }
   * { box-sizing: border-box; margin: 0; padding: 0; }
   html, body {
     background: var(--bg-0);
@@ -556,3 +598,22 @@ textarea.msg-edit:focus { outline: none; border-color: var(--accent); }
 }
 .list-col { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
 @media (max-width: 1100px) { .list-col, .grid-cols-2 { grid-template-columns: 1fr; } }
+
+/* ── Modal ───────────────────────────────────────────────── */
+.modal-scroll::-webkit-scrollbar { width: 6px; }
+.modal-scroll::-webkit-scrollbar-track { background: transparent; }
+.modal-scroll::-webkit-scrollbar-thumb { background: var(--bg-3); border-radius: 3px; }
+
+/* Smooth modal entry */
+@keyframes modal-in {
+  from { opacity: 0; transform: scale(0.96) translateY(8px); }
+  to   { opacity: 1; transform: scale(1)    translateY(0); }
+}
+
+/* Apply to the modal box */
+[data-modal="true"] {
+  animation: modal-in 0.18s ease-out;
+}
+
+/* Disable body scroll when modal open — applied via JS */
+body.modal-open { overflow: hidden; }

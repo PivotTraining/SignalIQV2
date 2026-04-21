@@ -70,6 +70,8 @@ function mapRecord(rec: any, interactions: Interaction[]): Prospect {
     name,
     title:            (f["Title"] ?? "") as string,
     company:          (f["Organization"] ?? f["Org"] ?? "") as string,
+    email:            (f["Email"] ?? null) as string | null,
+    phone:            (f["Phone"] ?? null) as string | null,
     headcount:        Number(f["Headcount"] ?? 0),
     initials:         initials(name),
     industry:         (f["Industry"] ?? "") as string,
