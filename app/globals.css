@@ -284,7 +284,7 @@
   /* Prospect table */
   .prospect-row {
     display: grid;
-    grid-template-columns: 3fr 1.2fr 0.9fr 1.4fr 90px;
+    grid-template-columns: 3fr 0.9fr 1.4fr 90px;
     gap: 16px;
     padding: 14px 20px;
     align-items: center;

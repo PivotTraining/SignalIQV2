@@ -1,12 +1,10 @@
 "use client";
 import { useEffect, useState, useRef } from "react";
 import type { Prospect } from "@/lib/types";
-import { stateCode, stateLabel, nextMoveFor, forbiddenFor } from "@/lib/nss";
 import { rBand, rScore, rBandLabel } from "@/lib/rscore";
 import { getCallScript, getEmailScript, NSS_TONE } from "@/lib/callScripts";
 import Composer from "./Composer";
 import LogInteraction from "./LogInteraction";
-import StateBadge from "./StateBadge";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -14,50 +12,23 @@ function parsePhone(raw: string | null): string | null {
   if (!raw) return null;
   const first = raw.split(";")[0].trim();
   const clean = first.replace(/\s*ext\.?\s*\d+/gi, "").trim();
-  // Keep only digits, +, -, (, ), spaces
   return clean.replace(/[^\d+\-()\s]/g, "").trim() || null;
 }
 
-function scoreBand(s: number) {
-  if (s >= 80) return { label: "🔥 Hot",     color: "#f97316" };
-  if (s >= 60) return { label: "⚡ Warm",     color: "#eab308" };
-  if (s >= 40) return { label: "🌡 Cooling",  color: "#6366f1" };
-  if (s >= 20) return { label: "❄️ Cold",     color: "#64748b" };
-  return            { label: "💤 Dormant",   color: "#94a3b8" };
+function emailSubject(prospect: Prospect): string {
+  const script = getEmailScript(prospect.industry);
+  return script.subjects[0]
+    .replace(/\[FirstName\]/g, prospect.name.split(" ")[0])
+    .replace(/\[Company\]/g, prospect.company);
 }
 
-function emailSubject(state: string): string {
-  if (state === "ventral")     return "Quick follow-up from Pivot Training";
-  if (state === "sympathetic") return "Something a little different from Pivot Training";
-  return "No agenda — just wanted to reach back out";
-}
-
-function emailOpener(name: string, state: string): string {
-  const first = name.split(" ")[0];
-  if (state === "ventral")
-    return `Hi ${first},\n\nFollowing up on our last conversation — wanted to share a few outcomes from districts similar to yours and see if it makes sense to connect for 20 minutes.\n\n`;
-  if (state === "sympathetic")
-    return `Hi ${first},\n\nI won't take much of your time. I just wanted to send one thing that's different from the usual outreach you probably get — a quick look at what schools like yours are doing differently around staff wellness.\n\n`;
-  return `Hi ${first},\n\nNo agenda here — just checking back in and wanted you to know Pivot Training is still in your corner whenever the timing is right.\n\nNo pressure at all. But if you've got 20 minutes in the coming weeks, I'd love to reconnect.\n\n`;
-}
-
-// ── Score bar ─────────────────────────────────────────────────────────────────
-
-function ScoreBar({ label, value, weight }: { label: string; value: number; weight: string }) {
-  return (
-    <div style={{ marginBottom: 10 }}>
-      <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11.5, marginBottom: 4 }}>
-        <span style={{ color: "var(--text-2)" }}>{label} <span style={{ color: "var(--text-3)" }}>({weight})</span></span>
-        <span style={{ fontFamily: "SF Mono, Menlo, monospace", color: "var(--text-0)", fontWeight: 600 }}>{value}</span>
-      </div>
-      <div style={{ height: 5, background: "var(--bg-3)", borderRadius: 3, overflow: "hidden" }}>
-        <div style={{
-          width: `${value}%`, height: "100%",
-          background: "linear-gradient(90deg, var(--accent), var(--accent-2))",
-        }} />
-      </div>
-    </div>
-  );
+function emailOpenerBody(prospect: Prospect): string {
+  const script = getEmailScript(prospect.industry);
+  const first = prospect.name.split(" ")[0];
+  return script.cold.body
+    .replace(/\[FirstName\]/g, first)
+    .replace(/\[Name\]/g, prospect.name)
+    .replace(/\[Company\]/g, prospect.company);
 }
 
 // ── Call Script panel ─────────────────────────────────────────────────────────
@@ -119,7 +90,7 @@ function CallScriptPanel({ prospect }: { prospect: Prospect }) {
         background: stateColor + "12", border: `1px solid ${stateColor}30`,
       }}>
         <div style={{ fontSize: 10.5, textTransform: "uppercase", letterSpacing: "0.08em", color: stateColor, marginBottom: 3, fontWeight: 600 }}>
-          {stateLabel[prospect.state]} — {prospect.industry || "General"}
+          {prospect.industry || "General"}
         </div>
         <div style={{ fontSize: 12.5, color: "var(--text-1)", lineHeight: 1.6 }}>{nssTone}</div>
       </div>
@@ -209,12 +180,14 @@ function CallScriptPanel({ prospect }: { prospect: Prospect }) {
 
 // ── Email Script panel ────────────────────────────────────────────────────────
 
+type EmailTab = "cold" | "followup" | "reengage";
+
 function EmailScriptPanel({ prospect }: { prospect: Prospect }) {
-  const script    = getEmailScript(prospect.industry);
-  const emailBody = script.states[prospect.state];
-  const first     = prospect.name.split(" ")[0];
-  const [subIdx, setSubIdx]   = useState(0);
-  const [copied, setCopied]   = useState<"subject" | "body" | "all" | null>(null);
+  const script = getEmailScript(prospect.industry);
+  const first  = prospect.name.split(" ")[0];
+  const [subIdx, setSubIdx]     = useState(0);
+  const [emailTab, setEmailTab] = useState<EmailTab>("cold");
+  const [copied, setCopied]     = useState<"subject" | "body" | "all" | null>(null);
 
   function fill(text: string) {
     return text
@@ -230,10 +203,17 @@ function EmailScriptPanel({ prospect }: { prospect: Prospect }) {
       .replace(/\[Day\]/g, "this week");
   }
 
-  const subject  = fill(script.subjects[subIdx] ?? "");
-  const body     = fill(emailBody.body);
-  const ps       = emailBody.ps ? fill(emailBody.ps) : null;
-  const fullText = `Subject: ${subject}\n\n${body}${ps ? `\n\nP.S. ${ps}` : ""}`;
+  const TAB_LABELS: Record<EmailTab, string> = {
+    cold:     "Cold",
+    followup: "Follow-up",
+    reengage: "Re-engage",
+  };
+
+  const emailBody = script[emailTab];
+  const subject   = fill(script.subjects[subIdx] ?? "");
+  const body      = fill(emailBody.body);
+  const ps        = emailBody.ps ? fill(emailBody.ps) : null;
+  const fullText  = `Subject: ${subject}\n\n${body}${ps ? `\n\nP.S. ${ps}` : ""}`;
 
   function copy(what: "subject" | "body" | "all") {
     const text = what === "subject" ? subject : what === "body" ? body + (ps ? `\n\nP.S. ${ps}` : "") : fullText;
@@ -245,28 +225,33 @@ function EmailScriptPanel({ prospect }: { prospect: Prospect }) {
 
   function sendEmail() {
     if (!prospect.email) return;
-    const sub  = encodeURIComponent(subject);
-    const bod  = encodeURIComponent(body + (ps ? `\n\nP.S. ${ps}` : ""));
+    const sub = encodeURIComponent(subject);
+    const bod = encodeURIComponent(body + (ps ? `\n\nP.S. ${ps}` : ""));
     window.open(`mailto:${prospect.email}?subject=${sub}&body=${bod}`, "_self");
   }
 
-  const STATE_LABEL_LOCAL: Record<string, string> = { ventral: "Engaged", sympathetic: "Cautious", dorsal: "Quiet" };
-  const STATE_COLOR_LOCAL: Record<string, string>  = { ventral: "#22c55e", sympathetic: "#f97316", dorsal: "#8b5cf6" };
-  const stateColor = STATE_COLOR_LOCAL[prospect.state] ?? "var(--accent)";
+  const accentColor = "var(--accent)";
 
   return (
     <div style={{ padding: "16px 0" }}>
-      {/* State advisory */}
-      <div style={{
-        padding: "10px 14px", borderRadius: 8, marginBottom: 14,
-        background: stateColor + "12", border: `1px solid ${stateColor}30`,
-      }}>
-        <div style={{ fontSize: 10.5, textTransform: "uppercase", letterSpacing: "0.08em", color: stateColor, marginBottom: 3, fontWeight: 600 }}>
-          {STATE_LABEL_LOCAL[prospect.state]} — {prospect.industry || "General"} script
-        </div>
-        <div style={{ fontSize: 12, color: "var(--text-2)" }}>
-          {NSS_TONE[prospect.state]}
-        </div>
+      {/* Email type tabs */}
+      <div style={{ display: "flex", gap: 6, marginBottom: 14 }}>
+        {(["cold", "followup", "reengage"] as EmailTab[]).map(t => (
+          <button
+            key={t}
+            onClick={() => setEmailTab(t)}
+            style={{
+              padding: "5px 14px", borderRadius: 20, fontSize: 12, cursor: "pointer",
+              border: `1px solid ${emailTab === t ? "var(--accent)" : "var(--line-2)"}`,
+              background: emailTab === t ? "var(--accent)" : "var(--bg-3)",
+              color: emailTab === t ? "#fff" : "var(--text-2)",
+              fontWeight: emailTab === t ? 600 : 400,
+              transition: "all 0.15s",
+            }}
+          >
+            {TAB_LABELS[t]}
+          </button>
+        ))}
       </div>
 
       {/* Subject line picker */}
@@ -282,15 +267,15 @@ function EmailScriptPanel({ prospect }: { prospect: Prospect }) {
               style={{
                 display: "flex", alignItems: "center", gap: 10,
                 padding: "8px 12px", borderRadius: 8, cursor: "pointer",
-                background: subIdx === i ? stateColor + "14" : "var(--bg-2)",
-                border: `1px solid ${subIdx === i ? stateColor + "50" : "var(--line-2)"}`,
+                background: subIdx === i ? "rgba(124,92,255,0.08)" : "var(--bg-2)",
+                border: `1px solid ${subIdx === i ? "rgba(124,92,255,0.4)" : "var(--line-2)"}`,
                 transition: "all 0.12s",
               }}
             >
               <span style={{
                 width: 16, height: 16, borderRadius: "50%", flexShrink: 0,
-                border: `2px solid ${subIdx === i ? stateColor : "var(--line-2)"}`,
-                background: subIdx === i ? stateColor : "transparent",
+                border: `2px solid ${subIdx === i ? "var(--accent)" : "var(--line-2)"}`,
+                background: subIdx === i ? "var(--accent)" : "transparent",
                 display: "flex", alignItems: "center", justifyContent: "center",
               }}>
                 {subIdx === i && <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#fff", display: "block" }} />}
@@ -301,7 +286,7 @@ function EmailScriptPanel({ prospect }: { prospect: Prospect }) {
               {subIdx === i && (
                 <button
                   onClick={e => { e.stopPropagation(); copy("subject"); }}
-                  style={{ marginLeft: "auto", fontSize: 11, background: "none", border: "none", cursor: "pointer", color: copied === "subject" ? stateColor : "var(--text-3)" }}
+                  style={{ marginLeft: "auto", fontSize: 11, background: "none", border: "none", cursor: "pointer", color: copied === "subject" ? accentColor : "var(--text-3)" }}
                 >
                   {copied === "subject" ? "✓ Copied" : "Copy"}
                 </button>
@@ -319,7 +304,7 @@ function EmailScriptPanel({ prospect }: { prospect: Prospect }) {
           </div>
           <button
             onClick={() => copy("body")}
-            style={{ marginLeft: "auto", fontSize: 11, background: "none", border: "none", cursor: "pointer", color: copied === "body" ? stateColor : "var(--text-3)" }}
+            style={{ marginLeft: "auto", fontSize: 11, background: "none", border: "none", cursor: "pointer", color: copied === "body" ? accentColor : "var(--text-3)" }}
           >
             {copied === "body" ? "✓ Copied" : "Copy body"}
           </button>
@@ -359,7 +344,7 @@ function EmailScriptPanel({ prospect }: { prospect: Prospect }) {
 
       {/* Tips */}
       <div style={{ padding: "12px 14px", borderRadius: 8, background: "var(--bg-2)", border: "1px solid var(--line)" }}>
-        <div style={{ fontSize: 10.5, textTransform: "uppercase", letterSpacing: "0.08em", color: stateColor, marginBottom: 8, fontWeight: 600 }}>
+        <div style={{ fontSize: 10.5, textTransform: "uppercase", letterSpacing: "0.08em", color: accentColor, marginBottom: 8, fontWeight: 600 }}>
           Email Tips — {prospect.industry || "General"}
         </div>
         <ul style={{ paddingLeft: 16, margin: 0 }}>
@@ -372,93 +357,129 @@ function EmailScriptPanel({ prospect }: { prospect: Prospect }) {
   );
 }
 
-// ── Signal Script panel (PressureIQ / BurnoutIQ) ─────────────────────────────
+// ── Product Script panel ──────────────────────────────────────────────────────
 
-function SignalScriptPanel({ prospect }: { prospect: Prospect }) {
-  const hasPressure = prospect.timingWindow >= 60 || prospect.intentVelocity >= 70;
-  const hasBurnout  = prospect.state === "dorsal" && prospect.lastTouchDaysAgo >= 21;
-  const first       = prospect.name.split(" ")[0];
+type ProductTab = "assessment" | "speaking" | "workshop";
 
-  type Mode = "pressure" | "burnout";
-  const [mode, setMode]   = useState<Mode>(hasPressure ? "pressure" : "burnout");
-  const [step, setStep]   = useState(0);
+interface ProductStep {
+  label: string;
+  emoji: string;
+  tip:   string;
+  text:  string;
+}
+
+const PRODUCT_STEPS: Record<ProductTab, ProductStep[]> = {
+  assessment: [
+    {
+      label: "Gatekeeper",
+      emoji: "🚪",
+      tip: "Don't mention 'assessment' or 'training' — say workforce diagnostic. It sounds different.",
+      text: "Hi, this is Chris Davis — is [Name] available? [If asked:] I work with organizations on a workforce diagnostic — just a quick question for them.",
+    },
+    {
+      label: "Opener",
+      emoji: "👋",
+      tip: "Lead with curiosity about how they currently measure burnout — most don't. That's your opening.",
+      text: "Hey [Name], Chris Davis — quick question for you. We just launched a diagnostic assessment that's been getting a lot of attention from HR leaders right now. I'll be quick — you have two minutes?",
+    },
+    {
+      label: "Discovery",
+      emoji: "🔍",
+      tip: "The word 'measuring' is key. Most orgs don't measure burnout — they react to it. That gap is your in.",
+      text: "Here's what I want to understand first: when it comes to your team, is burnout something you're actively measuring right now, or is it more of a 'we'll know it when we see it' situation? ... [Listen.] ... And when it does show up — what does that cost you? Turnover, performance issues, sick days?",
+    },
+    {
+      label: "Pitch",
+      emoji: "🎯",
+      tip: "The word 'proactive' is the hook. Everyone else is reactive. That contrast does the work.",
+      text: "So what we built — PressureIQ — is a 15-minute assessment your team takes individually. It measures exactly where pressure tolerance is breaking down and who's at risk before it becomes a retention problem. You get a dashboard that shows leadership where the weak points are and what to do about them. It's proactive instead of reactive. Most companies are flying blind on this.",
+    },
+    {
+      label: "Close",
+      emoji: "🤙",
+      tip: "The sample report close is low-friction. You're not asking for a decision — you're asking for a look.",
+      text: "Here's what I'd suggest — let me send you a sample report so you can see exactly what the output looks like. If it's relevant, we get on a call and I'll show you how to run it for your team. Would that be worth 20 minutes?",
+    },
+  ],
+  speaking: [
+    {
+      label: "Gatekeeper",
+      emoji: "🚪",
+      tip: "Event coordinators get pitched constantly. Sound specific, not generic.",
+      text: "Hi, this is Chris Davis — is [Name] available? [If asked:] I work with organizations and conferences as a keynote speaker — just a quick question.",
+    },
+    {
+      label: "Opener",
+      emoji: "👋",
+      tip: "Ask about their audience/event before pitching — shows you care about fit, not just a booking.",
+      text: "Hey [Name], Chris Davis. I'll be upfront — I'm a speaker and I had a specific reason I wanted to connect with you. The topic I speak on is one that I think your audience is dealing with right now. Two minutes?",
+    },
+    {
+      label: "Discovery",
+      emoji: "🔍",
+      tip: "The phrase 'running out of capacity' is more specific than burnout. It lands differently with high performers.",
+      text: "What's your team or audience dealing with most right now on the performance side? Because the events and organizations that have brought me in are all dealing with a version of the same thing — people who are technically excellent and running out of capacity to keep performing at that level. Is that a conversation your group needs?",
+    },
+    {
+      label: "Pitch",
+      emoji: "🎯",
+      tip: "'Tools, not just feelings' is the differentiator. Most speakers leave people inspired. Chris leaves them equipped.",
+      text: "What I do on stage is different from a standard motivational talk. I give people a framework they can actually use — not inspiration that wears off in 48 hours. The talk is built around what happens to human performance under sustained pressure and what to do about it. People leave with tools, not just feelings. I've spoken to school districts, corporate teams, associations, health systems. The topic lands differently depending on the room and I adapt it.",
+    },
+    {
+      label: "Close",
+      emoji: "🤙",
+      tip: "The one-sheet + clip close is the right ask for a first conversation. Don't ask for a booking yet.",
+      text: "I'd love to send you my speaker one-sheet and a clip. If you're planning an event or know someone who is — I think it's worth a look. Can I send it over?",
+    },
+  ],
+  workshop: [
+    {
+      label: "Gatekeeper",
+      emoji: "🚪",
+      tip: "Keep the gatekeeper question short. The less you say here, the better.",
+      text: "Hi, this is Chris Davis — is [Name] available? [If asked:] I work with teams on experiential training — quick question for them.",
+    },
+    {
+      label: "Opener",
+      emoji: "👋",
+      tip: "The word 'specific' signals you're not pitching a generic program. It buys you two minutes.",
+      text: "Hey [Name], Chris Davis — I'll be quick. I work with teams on something specific and I wanted to see if it's relevant for your group right now. Two minutes?",
+    },
+    {
+      label: "Discovery",
+      emoji: "🔍",
+      tip: "Ask for the unpolished answer. 'I'm not asking for the polished answer' gives them permission to be honest.",
+      text: "So — when your team is under pressure, what does that look like? Do people go quiet, does communication break down, does performance dip? I'm not asking for the polished answer — what does it actually look like? ... [Listen.] ... And has anything been done to address it, or has it just been managed around?",
+    },
+    {
+      label: "Pitch",
+      emoji: "🎯",
+      tip: "Experiential is the differentiator — emphasize they're doing things, not just listening. That's what makes it stick.",
+      text: "What we do is a half-day or full-day workshop that's not lecture-style. It's experiential — your team is doing things, not just listening. They leave with specific tools for managing pressure in real time: how to stay effective when things get hard, how to communicate when the stakes are high, how to recover fast instead of staying depleted. The results show up in the room, not three months later.",
+    },
+    {
+      label: "Close",
+      emoji: "🤙",
+      tip: "A 20-minute call with a walk-through is a soft ask. You're customizing it to them — that's the value.",
+      text: "Here's what I'd suggest — let me send you our workshop overview and a few outcomes from teams similar to yours. If it resonates, we get on a 20-minute call and I'll walk you through what it looks like for your specific group. Does that sound reasonable?",
+    },
+  ],
+};
+
+function ProductScriptPanel({ prospect }: { prospect: Prospect }) {
+  const first = prospect.name.split(" ")[0];
+  const [tab, setTab]   = useState<ProductTab>("assessment");
+  const [step, setStep] = useState(0);
   const [copied, setCopied] = useState(false);
+
+  const steps = PRODUCT_STEPS[tab];
 
   function fill(text: string) {
     return text
       .replace(/\[Name\]/g, first)
-      .replace(/\[Company\]/g, prospect.company)
-      .replace(/\[Industry\]/g, prospect.industry || "your sector")
-      .replace(/\[Days\]/g, String(prospect.lastTouchDaysAgo));
+      .replace(/\[Company\]/g, prospect.company);
   }
-
-  const PRESSURE_STEPS = [
-    {
-      label: "Pattern interrupt",
-      emoji: "⚡",
-      tip: "Skip the pleasantries — they're in a decision window. Name the moment.",
-      text: `Hey [Name], I'm going to skip the usual part of the call. I've been paying attention to what's happening at [Company] and I think there's a specific reason — right now, not in six months — that a conversation makes sense. You have two minutes?`,
-    },
-    {
-      label: "Name the pressure",
-      emoji: "🎯",
-      tip: "Lead with what the signals say. You're not guessing — you're reflecting.",
-      text: `Here's what I'm picking up on. You're at a point in the year where staffing decisions start happening — good people are weighing their options, administrators are looking at what's working, and something's usually sitting on somebody's desk that hasn't been addressed yet. Is any of that landing right now?`,
-    },
-    {
-      label: "Pressure discovery",
-      emoji: "🔍",
-      tip: "Ask about the thing with a deadline. Urgency-aware discovery.",
-      text: `What's the most pressing thing on your plate right now — specifically the thing that has a clock on it? The one that if you don't move on it this semester it gets harder? I want to understand that before I say anything about what we do.`,
-    },
-    {
-      label: "Bridge to now",
-      emoji: "🌉",
-      tip: "Connect their urgency to your speed. You move fast — most programs don't.",
-      text: `That's exactly the kind of situation where timing matters for what we do. Most things in this space take months to spin up. What we do is designed to move. I can show you an organization that was in your exact position and what they did in 90 days. Can we find 20 minutes this week?`,
-    },
-    {
-      label: "Tight close",
-      emoji: "🤙",
-      tip: "Specific ask. They're in a window — don't leave it open-ended.",
-      text: `I'm not going to sell you anything today. I want to put one case study in front of you — matches what you just described — and let you decide if there's a conversation worth having. Is this week better or early next?`,
-    },
-  ];
-
-  const BURNOUT_STEPS = [
-    {
-      label: "Human first",
-      emoji: "🤝",
-      tip: "Do NOT pitch. Something shifted. Lead with care — if you pitch now you're done.",
-      text: `Hey [Name], this is Chris Davis — I'm not calling to pitch you anything. I noticed it's been a while since we connected and I just wanted to check in. Not on the business side. How are things actually going over there?`,
-    },
-    {
-      label: "Name the silence",
-      emoji: "🌑",
-      tip: "Name what you're observing without making them feel bad about it.",
-      text: `I ask because what I'm seeing at a lot of [Industry] right now is that the people running things are carrying more than they're letting on. And when I stop hearing from someone I've been in conversation with, it's usually not because things got easier.`,
-    },
-    {
-      label: "Real question",
-      emoji: "🔍",
-      tip: "One honest question. Give them room to say something real.",
-      text: `How is your staff actually doing right now? Not the official answer — what's it like in the building? Because if things have gotten harder since we last talked, I want to know that before I say anything else.`,
-    },
-    {
-      label: "Soft bridge",
-      emoji: "🌉",
-      tip: "Only go here if they opened up. Don't force it. Match their energy.",
-      text: `What you just described — I hear that constantly right now. And what I've seen is that the organizations that wait for it to get better on its own usually don't find that it does. I'm not asking you to commit to anything. I just want to know if it's worth staying in your world for when the timing shifts.`,
-    },
-    {
-      label: "No-pressure close",
-      emoji: "🌱",
-      tip: "A yes to staying connected is the win here. That's all.",
-      text: `I don't need a decision on anything. I just want to know: is it worth me checking back in a few weeks? If the answer is yes, I'll be here. If the answer is no, just say so and I'll leave you alone.`,
-    },
-  ];
-
-  const steps = mode === "pressure" ? PRESSURE_STEPS : BURNOUT_STEPS;
 
   function copyStep() {
     navigator.clipboard.writeText(fill(steps[step].text)).then(() => {
@@ -467,96 +488,62 @@ function SignalScriptPanel({ prospect }: { prospect: Prospect }) {
     });
   }
 
+  // Reset step when tab changes
+  function switchTab(t: ProductTab) {
+    setTab(t);
+    setStep(0);
+  }
+
+  const TAB_LABELS: Record<ProductTab, string> = {
+    assessment: "Assessment",
+    speaking:   "Speaking",
+    workshop:   "Workshops",
+  };
+
+  const TAB_COLORS: Record<ProductTab, string> = {
+    assessment: "#7c5cff",
+    speaking:   "#0ea5e9",
+    workshop:   "#10b981",
+  };
+
+  const color = TAB_COLORS[tab];
+
   return (
     <div style={{ padding: "16px 0" }}>
-      {/* Which signals are active */}
-      <div style={{ display: "flex", gap: 8, marginBottom: 14, flexWrap: "wrap" }}>
-        {hasPressure && (
-          <div style={{
-            padding: "8px 12px", borderRadius: 8, flex: 1, minWidth: 160,
-            background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.25)",
-          }}>
-            <div style={{ fontSize: 10.5, textTransform: "uppercase", letterSpacing: "0.08em", color: "#ef4444", fontWeight: 700, marginBottom: 2 }}>
-              🔴 PressureIQ active
-            </div>
-            <div style={{ fontSize: 11.5, color: "var(--text-2)" }}>
-              {prospect.timingWindow >= 60 ? `Timing window: ${prospect.timingWindow}` : ""}
-              {prospect.timingWindow >= 60 && prospect.intentVelocity >= 70 ? " · " : ""}
-              {prospect.intentVelocity >= 70 ? `Intent: ${prospect.intentVelocity}` : ""}
-            </div>
-          </div>
-        )}
-        {hasBurnout && (
-          <div style={{
-            padding: "8px 12px", borderRadius: 8, flex: 1, minWidth: 160,
-            background: "rgba(245,158,11,0.08)", border: "1px solid rgba(245,158,11,0.25)",
-          }}>
-            <div style={{ fontSize: 10.5, textTransform: "uppercase", letterSpacing: "0.08em", color: "#f59e0b", fontWeight: 700, marginBottom: 2 }}>
-              🟡 BurnoutIQ active
-            </div>
-            <div style={{ fontSize: 11.5, color: "var(--text-2)" }}>
-              Gone quiet · {prospect.lastTouchDaysAgo}d since last touch
-            </div>
-          </div>
-        )}
-        {!hasPressure && !hasBurnout && (
-          <div style={{
-            padding: "8px 12px", borderRadius: 8,
-            background: "var(--bg-2)", border: "1px solid var(--line-2)",
-            fontSize: 12, color: "var(--text-3)",
-          }}>
-            No active signal detected — scripts shown for general context
-          </div>
-        )}
+      {/* Product tabs */}
+      <div style={{ display: "flex", gap: 6, marginBottom: 16 }}>
+        {(["assessment", "speaking", "workshop"] as ProductTab[]).map(t => (
+          <button
+            key={t}
+            onClick={() => switchTab(t)}
+            style={{
+              padding: "6px 16px", borderRadius: 20, fontSize: 12.5, cursor: "pointer",
+              border: `1px solid ${tab === t ? TAB_COLORS[t] : "var(--line-2)"}`,
+              background: tab === t ? TAB_COLORS[t] + "18" : "var(--bg-3)",
+              color: tab === t ? TAB_COLORS[t] : "var(--text-2)",
+              fontWeight: tab === t ? 700 : 400,
+              transition: "all 0.15s",
+            }}
+          >
+            {TAB_LABELS[t]}
+          </button>
+        ))}
       </div>
-
-      {/* Mode toggle if both signals active */}
-      {hasPressure && hasBurnout && (
-        <div style={{ display: "flex", gap: 6, marginBottom: 14 }}>
-          <button
-            onClick={() => { setMode("pressure"); setStep(0); }}
-            style={{
-              padding: "5px 14px", borderRadius: 20, fontSize: 12, cursor: "pointer",
-              border: `1px solid ${mode === "pressure" ? "#ef4444" : "var(--line-2)"}`,
-              background: mode === "pressure" ? "rgba(239,68,68,0.1)" : "var(--bg-3)",
-              color: mode === "pressure" ? "#ef4444" : "var(--text-2)",
-              fontWeight: mode === "pressure" ? 700 : 400,
-            }}
-          >
-            🔴 PressureIQ
-          </button>
-          <button
-            onClick={() => { setMode("burnout"); setStep(0); }}
-            style={{
-              padding: "5px 14px", borderRadius: 20, fontSize: 12, cursor: "pointer",
-              border: `1px solid ${mode === "burnout" ? "#f59e0b" : "var(--line-2)"}`,
-              background: mode === "burnout" ? "rgba(245,158,11,0.1)" : "var(--bg-3)",
-              color: mode === "burnout" ? "#f59e0b" : "var(--text-2)",
-              fontWeight: mode === "burnout" ? 700 : 400,
-            }}
-          >
-            🟡 BurnoutIQ
-          </button>
-        </div>
-      )}
 
       {/* Step tabs */}
       <div style={{ display: "flex", gap: 5, marginBottom: 10, flexWrap: "wrap" }}>
-        {steps.map((s, i) => {
-          const activeColor = mode === "pressure" ? "#ef4444" : "#f59e0b";
-          return (
-            <button key={i} onClick={() => setStep(i)} style={{
-              padding: "5px 10px", borderRadius: 6, fontSize: 11.5, cursor: "pointer",
-              border: `1px solid ${step === i ? activeColor : "var(--line-2)"}`,
-              background: step === i ? activeColor + "18" : "var(--bg-3)",
-              color: step === i ? activeColor : "var(--text-2)",
-              fontWeight: step === i ? 700 : 400,
-              display: "flex", alignItems: "center", gap: 4,
-            }}>
-              <span>{s.emoji}</span> {s.label}
-            </button>
-          );
-        })}
+        {steps.map((s, i) => (
+          <button key={i} onClick={() => setStep(i)} style={{
+            padding: "5px 10px", borderRadius: 6, fontSize: 11.5, cursor: "pointer",
+            border: `1px solid ${step === i ? color : "var(--line-2)"}`,
+            background: step === i ? color + "18" : "var(--bg-3)",
+            color: step === i ? color : "var(--text-2)",
+            fontWeight: step === i ? 700 : 400,
+            display: "flex", alignItems: "center", gap: 4,
+          }}>
+            <span>{s.emoji}</span> {s.label}
+          </button>
+        ))}
       </div>
 
       {/* Tip */}
@@ -583,7 +570,7 @@ function SignalScriptPanel({ prospect }: { prospect: Prospect }) {
         <button className="btn" onClick={() => setStep(Math.max(0, step - 1))} disabled={step === 0}>← Back</button>
         <button
           className="btn btn-primary"
-          style={{ background: mode === "pressure" ? "#dc2626" : "#d97706", borderColor: mode === "pressure" ? "#dc2626" : "#d97706" }}
+          style={{ background: color, border: "none" }}
           onClick={() => setStep(Math.min(steps.length - 1, step + 1))}
           disabled={step === steps.length - 1}
         >
@@ -612,19 +599,16 @@ interface Props {
 
 export default function ProspectModal({ prospect: initialProspect, onClose, onDeleted }: Props) {
   const [prospect, setProspect] = useState(initialProspect);
-  const [tab, setTab]             = useState<Tab>("actions");
+  const [tab, setTab]                         = useState<Tab>("actions");
   const [showScript, setShowScript]           = useState(false);
   const [showEmailScript, setShowEmailScript] = useState(false);
-  const [showSignalScript, setShowSignalScript] = useState(false);
-  const [showScoreDetail, setShowScoreDetail] = useState(false);
+  const [showProductScript, setShowProductScript] = useState(false);
   const [confirmDelete, setConfirmDelete]     = useState(false);
   const [deleting, setDeleting]               = useState(false);
   const backdropRef = useRef<HTMLDivElement>(null);
 
-  // Sync if parent re-passes a new prospect
   useEffect(() => setProspect(initialProspect), [initialProspect]);
 
-  // Refetch prospect from API to pick up freshly recalculated scores
   async function refreshProspect() {
     try {
       const res = await fetch(`/api/contacts/${prospect.id}`, { cache: "no-store" });
@@ -649,14 +633,12 @@ export default function ProspectModal({ prospect: initialProspect, onClose, onDe
     }
   }
 
-  // Close on Escape
   useEffect(() => {
     const handler = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
   }, [onClose]);
 
-  // Lock body scroll
   useEffect(() => {
     document.body.style.overflow = "hidden";
     return () => { document.body.style.overflow = ""; };
@@ -664,18 +646,21 @@ export default function ProspectModal({ prospect: initialProspect, onClose, onDe
 
   const r          = rScore(prospect);
   const band       = rBand(r);
-  const code       = stateCode[prospect.state];
-  const sband      = scoreBand(prospect.signalStack);
   const phone      = parsePhone(prospect.phone);
   const hasEmail   = !!prospect.email;
   const hasPhone   = !!phone;
   const linkedInQ  = encodeURIComponent(`${prospect.name} ${prospect.company}`);
 
-  // Build draft email body for "Approve & send"
+  const PRIORITY_STYLE: Record<string, { bg: string; color: string; label: string }> = {
+    high: { bg: "rgba(34,197,94,0.12)",   color: "#22c55e", label: "High" },
+    mid:  { bg: "rgba(234,179,8,0.10)",   color: "#ca8a04", label: "Mid"  },
+    low:  { bg: "rgba(148,163,184,0.10)", color: "#64748b", label: "Low"  },
+  };
+  const ps = PRIORITY_STYLE[band] ?? PRIORITY_STYLE.low;
+
   function openEmail() {
-    const opener  = emailOpener(prospect.name, prospect.state);
-    const subject = encodeURIComponent(emailSubject(prospect.state));
-    const body    = encodeURIComponent(`${opener}[Your message here]\n\nBest,\nChris\nPivot Training`);
+    const subject = encodeURIComponent(emailSubject(prospect));
+    const body    = encodeURIComponent(emailOpenerBody(prospect));
     window.open(`mailto:${prospect.email}?subject=${subject}&body=${body}`, "_self");
   }
 
@@ -690,9 +675,9 @@ export default function ProspectModal({ prospect: initialProspect, onClose, onDe
 
   function exportCSV() {
     const rows = [
-      ["Name", "Title", "Company", "Email", "Phone", "Industry", "Signal Score", "Intent", "R-Score", "NSS State", "Last Touch Days Ago", "Next Move"],
+      ["Name", "Title", "Company", "Email", "Phone", "Industry", "Signal Score", "Intent", "R-Score", "Last Touch Days Ago", "Next Move"],
       [prospect.name, prospect.title, prospect.company, prospect.email ?? "", prospect.phone ?? "", prospect.industry,
-       prospect.signalStack, prospect.intentVelocity, Math.round(r), prospect.state, prospect.lastTouchDaysAgo, prospect.nextMove],
+       prospect.signalStack, prospect.intentVelocity, Math.round(r), prospect.lastTouchDaysAgo, prospect.nextMove],
     ];
     const csv = rows.map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(",")).join("\n");
     const a = document.createElement("a");
@@ -711,6 +696,9 @@ export default function ProspectModal({ prospect: initialProspect, onClose, onDe
   const ACTION_BTN_DISABLED: React.CSSProperties = {
     ...ACTION_BTN, opacity: 0.3, cursor: "not-allowed",
   };
+
+  // Avatar color from NSS state
+  const stateClass = prospect.state === "ventral" ? "v" : prospect.state === "sympathetic" ? "s" : "d";
 
   return (
     <div
@@ -738,7 +726,7 @@ export default function ProspectModal({ prospect: initialProspect, onClose, onDe
           display: "flex", gap: 14, alignItems: "flex-start",
           background: "var(--bg-2)", borderRadius: "18px 18px 0 0",
         }}>
-          <div className={`avatar ${code}`} style={{ width: 46, height: 46, fontSize: 15, flexShrink: 0 }}>
+          <div className={`avatar ${stateClass}`} style={{ width: 46, height: 46, fontSize: 15, flexShrink: 0 }}>
             {prospect.initials}
           </div>
           <div style={{ flex: 1, minWidth: 0 }}>
@@ -749,11 +737,13 @@ export default function ProspectModal({ prospect: initialProspect, onClose, onDe
               {[prospect.title, prospect.company, prospect.industry].filter(Boolean).join(" · ")}
             </div>
             <div style={{ display: "flex", gap: 8, marginTop: 8, flexWrap: "wrap", alignItems: "center" }}>
-              <StateBadge state={prospect.state} />
               <span style={{
-                padding: "3px 8px", borderRadius: 6, fontSize: 11.5, fontWeight: 600,
-                background: `${sband.color}18`, color: sband.color,
-              }}>{sband.label} {prospect.signalStack}</span>
+                padding: "3px 10px", borderRadius: 20,
+                fontSize: 12, fontWeight: 700,
+                background: ps.bg, color: ps.color,
+              }}>
+                Priority: {ps.label}
+              </span>
               <span style={{ fontSize: 11.5, color: "var(--text-3)" }}>
                 R-Score <span className={`rscore ${band}`}>{Math.round(r)}</span>
                 {" · "}{rBandLabel(r)}
@@ -775,14 +765,18 @@ export default function ProspectModal({ prospect: initialProspect, onClose, onDe
           padding: "14px 24px", borderBottom: "1px solid var(--line)",
           display: "flex", gap: 8, flexWrap: "wrap",
         }}>
-          {/* Email — always available, toggles script panel */}
+          {/* Email */}
           <button
             style={{
               ...ACTION_BTN,
               background: showEmailScript ? "var(--accent)" : "var(--bg-2)",
               color: showEmailScript ? "#fff" : "var(--text-1)",
             }}
-            onClick={() => { setShowEmailScript(s => !s); setShowScript(false); }}
+            onClick={() => {
+              setShowEmailScript(s => !s);
+              setShowScript(false);
+              setShowProductScript(false);
+            }}
             title={hasEmail ? `Email script for ${prospect.name}` : "Email script — no address on file, copy & paste"}
           >
             <span style={{ fontSize: 18 }}>📧</span>
@@ -808,44 +802,34 @@ export default function ProspectModal({ prospect: initialProspect, onClose, onDe
           {/* Call script */}
           <button
             style={{ ...ACTION_BTN, background: showScript ? "var(--accent)" : "var(--bg-2)", color: showScript ? "#fff" : "var(--text-1)" }}
-            onClick={() => { setShowScript(s => !s); setShowEmailScript(false); }}
+            onClick={() => {
+              setShowScript(s => !s);
+              setShowEmailScript(false);
+              setShowProductScript(false);
+            }}
           >
             <span style={{ fontSize: 18 }}>📋</span>
             Call script
           </button>
 
-          {/* Signal script — PressureIQ / BurnoutIQ */}
-          {(() => {
-            const hasPressure = prospect.timingWindow >= 60 || prospect.intentVelocity >= 70;
-            const hasBurnout  = prospect.state === "dorsal" && prospect.lastTouchDaysAgo >= 21;
-            const hasSignal   = hasPressure || hasBurnout;
-            const signalColor = hasPressure ? "#ef4444" : "#f59e0b";
-            return (
-              <button
-                style={{
-                  ...ACTION_BTN,
-                  background: showSignalScript
-                    ? (hasPressure ? "rgba(239,68,68,0.12)" : "rgba(245,158,11,0.12)")
-                    : "var(--bg-2)",
-                  borderColor: showSignalScript ? signalColor : hasSignal ? signalColor + "60" : "var(--line-2)",
-                  color: showSignalScript ? signalColor : hasSignal ? signalColor : "var(--text-2)",
-                  position: "relative",
-                }}
-                onClick={() => { setShowSignalScript(s => !s); setShowScript(false); setShowEmailScript(false); }}
-                title="PressureIQ / BurnoutIQ signal-based selling scripts"
-              >
-                {hasSignal && !showSignalScript && (
-                  <span style={{
-                    position: "absolute", top: 6, right: 6,
-                    width: 7, height: 7, borderRadius: "50%",
-                    background: signalColor, border: "1.5px solid var(--bg-1)",
-                  }} />
-                )}
-                <span style={{ fontSize: 18 }}>{hasBurnout && !hasPressure ? "🟡" : "🔴"}</span>
-                Signal script
-              </button>
-            );
-          })()}
+          {/* Products */}
+          <button
+            style={{
+              ...ACTION_BTN,
+              background: showProductScript ? "rgba(16,185,129,0.15)" : "var(--bg-2)",
+              borderColor: showProductScript ? "#10b981" : "var(--line-2)",
+              color: showProductScript ? "#10b981" : "var(--text-1)",
+            }}
+            onClick={() => {
+              setShowProductScript(s => !s);
+              setShowScript(false);
+              setShowEmailScript(false);
+            }}
+            title="Product-specific selling scripts"
+          >
+            <span style={{ fontSize: 18 }}>🎯</span>
+            Products
+          </button>
 
           {/* Export */}
           <button style={ACTION_BTN} onClick={exportCSV}>
@@ -881,24 +865,24 @@ export default function ProspectModal({ prospect: initialProspect, onClose, onDe
           )}
         </div>
 
-        {/* ── Email script panel (collapsible) ───────────────── */}
+        {/* ── Email script panel ──────────────────────────────── */}
         {showEmailScript && (
           <div style={{ padding: "0 24px", borderBottom: "1px solid var(--line)" }}>
             <EmailScriptPanel prospect={prospect} />
           </div>
         )}
 
-        {/* ── Call script panel (collapsible) ────────────────── */}
+        {/* ── Call script panel ───────────────────────────────── */}
         {showScript && (
           <div style={{ padding: "0 24px", borderBottom: "1px solid var(--line)" }}>
             <CallScriptPanel prospect={prospect} />
           </div>
         )}
 
-        {/* ── Signal script panel — PressureIQ / BurnoutIQ ───── */}
-        {showSignalScript && (
+        {/* ── Product script panel ────────────────────────────── */}
+        {showProductScript && (
           <div style={{ padding: "0 24px", borderBottom: "1px solid var(--line)" }}>
-            <SignalScriptPanel prospect={prospect} />
+            <ProductScriptPanel prospect={prospect} />
           </div>
         )}
 
@@ -921,93 +905,24 @@ export default function ProspectModal({ prospect: initialProspect, onClose, onDe
           {/* ACTIONS tab */}
           {tab === "actions" && (
             <div>
-              {/* Next move */}
-              <div style={{
-                padding: "14px 16px", borderRadius: 10, marginBottom: 16,
-                background: "linear-gradient(135deg, rgba(245,158,11,0.08), rgba(245,158,11,0.02))",
-                border: "1px solid rgba(245,158,11,0.2)",
-              }}>
-                <div style={{ fontSize: 10.5, textTransform: "uppercase", letterSpacing: "0.1em", color: "var(--sympathetic)", marginBottom: 6, fontWeight: 600 }}>
-                  Recommended next move
-                </div>
-                <div style={{ fontSize: 13.5, color: "var(--text-0)", lineHeight: 1.6, marginBottom: 8 }}>
-                  <strong>{nextMoveFor[prospect.state]}</strong>
-                </div>
-                {prospect.nextMove && (
-                  <div style={{ fontSize: 12.5, color: "var(--text-2)", lineHeight: 1.6, borderTop: "1px solid rgba(245,158,11,0.15)", paddingTop: 8, marginTop: 4 }}>
-                    <span style={{ color: "var(--text-3)", fontSize: 11 }}>CRM note: </span>
+              {/* Next move note */}
+              {prospect.nextMove && (
+                <div style={{
+                  padding: "12px 14px", borderRadius: 8, marginBottom: 16,
+                  background: "var(--bg-2)", border: "1px solid var(--line)",
+                }}>
+                  <div style={{ fontSize: 10.5, textTransform: "uppercase", letterSpacing: "0.1em", color: "var(--text-3)", marginBottom: 6, fontWeight: 600 }}>
+                    Next move note
+                  </div>
+                  <div style={{ fontSize: 13, color: "var(--text-1)", lineHeight: 1.6 }}>
                     {prospect.nextMove}
                   </div>
-                )}
-                <div style={{ fontSize: 11.5, color: "var(--danger)", marginTop: 6 }}>
-                  ✗ Avoid: {forbiddenFor[prospect.state]}
                 </div>
-              </div>
-
-              {/* Priority score — simplified 3-bar view */}
-              <div style={{ marginBottom: 20 }}>
-                {/* Header row */}
-                <div style={{ display: "flex", alignItems: "center", marginBottom: 12 }}>
-                  <div style={{ fontSize: 11, textTransform: "uppercase", letterSpacing: "0.1em", color: "var(--text-3)", fontWeight: 600 }}>
-                    Priority score
-                  </div>
-                  <span style={{
-                    marginLeft: 8, padding: "2px 10px", borderRadius: 20,
-                    fontSize: 12, fontWeight: 700,
-                    background: band === "high" ? "rgba(34,197,94,0.12)" : band === "mid" ? "rgba(234,179,8,0.10)" : "rgba(148,163,184,0.10)",
-                    color: band === "high" ? "#22c55e" : band === "mid" ? "#ca8a04" : "#64748b",
-                  }}>
-                    {band === "high" ? "High" : band === "mid" ? "Mid" : "Low"} · {Math.round(r)}
-                  </span>
-                  <button
-                    onClick={() => setShowScoreDetail(s => !s)}
-                    style={{
-                      marginLeft: "auto", background: "none", border: "none",
-                      cursor: "pointer", fontSize: 11.5, color: "var(--text-3)",
-                      padding: "2px 6px",
-                    }}
-                  >
-                    {showScoreDetail ? "Hide detail ↑" : "Show detail ↓"}
-                  </button>
-                </div>
-
-                {/* 3 grouped bars — always visible */}
-                <ScoreBar
-                  label="Activity — how recently & often you've engaged"
-                  value={Math.round(prospect.signalStack * 0.6 + prospect.socialProofAlignment * 0.4)}
-                  weight=""
-                />
-                <ScoreBar
-                  label="Interest — buying signals & intent"
-                  value={Math.round(prospect.intentVelocity * 0.6 + prospect.timingWindow * 0.4)}
-                  weight=""
-                />
-                <ScoreBar
-                  label="Fit — budget, authority & timing"
-                  value={Math.round(prospect.budgetIndicator * 0.4 + prospect.authorityMatch * 0.35 + prospect.timingWindow * 0.25)}
-                  weight=""
-                />
-
-                {/* Full breakdown — toggle */}
-                {showScoreDetail && (
-                  <div style={{ marginTop: 12, paddingTop: 12, borderTop: "1px solid var(--line)" }}>
-                    <div style={{ fontSize: 10.5, color: "var(--text-3)", marginBottom: 8, textTransform: "uppercase", letterSpacing: "0.07em" }}>
-                      Full breakdown
-                    </div>
-                    <ScoreBar label="Signal stack"     value={prospect.signalStack}         weight="0.25" />
-                    <ScoreBar label="Intent velocity"  value={prospect.intentVelocity}       weight="0.20" />
-                    <ScoreBar label="Budget indicator" value={prospect.budgetIndicator}      weight="0.15" />
-                    <ScoreBar label="Authority match"  value={prospect.authorityMatch}       weight="0.15" />
-                    <ScoreBar label="Timing window"    value={prospect.timingWindow}         weight="0.15" />
-                    <ScoreBar label="Social proof"     value={prospect.socialProofAlignment} weight="0.10" />
-                  </div>
-                )}
-              </div>
+              )}
 
               {/* Log interaction */}
-              <div style={{ borderTop: "1px solid var(--line)", paddingTop: 16 }}>
+              <div style={{ borderTop: prospect.nextMove ? "1px solid var(--line)" : undefined, paddingTop: prospect.nextMove ? 16 : 0 }}>
                 <LogInteraction contactId={prospect.id} onLogged={() => {
-                  // Optimistic update + delayed refetch to pick up recalculated scores
                   setProspect(p => ({ ...p, lastTouchDaysAgo: 0 }));
                   setTimeout(refreshProspect, 1800);
                 }} />
@@ -1019,7 +934,7 @@ export default function ProspectModal({ prospect: initialProspect, onClose, onDe
           {tab === "compose" && (
             <div>
               <div style={{ fontSize: 11.5, color: "var(--text-2)", marginBottom: 12, lineHeight: 1.6 }}>
-                AI drafts are calibrated to <strong style={{ color: "var(--text-1)" }}>{prospect.name}</strong>'s current NSS state ({stateLabel[prospect.state]}).
+                AI drafts calibrated for <strong style={{ color: "var(--text-1)" }}>{prospect.name}</strong>.
                 {hasEmail && <span> Hit <strong style={{ color: "var(--accent)" }}>Approve & send</strong> to open your mail app with the draft pre-loaded.</span>}
                 {!hasEmail && <span style={{ color: "var(--sympathetic)" }}> No email on file — copy the draft and send manually.</span>}
               </div>

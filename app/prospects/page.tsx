@@ -256,7 +256,7 @@ export default function ProspectsPage() {
         {/* Column headers */}
         <div style={{
           display: "grid",
-          gridTemplateColumns: "3fr 1.2fr 0.9fr 1.4fr 90px",
+          gridTemplateColumns: "3fr 0.9fr 1.4fr 90px",
           gap: 16, padding: "8px 20px",
           borderBottom: "1px solid var(--line)",
           fontSize: 10.5, textTransform: "uppercase",
@@ -264,7 +264,6 @@ export default function ProspectsPage() {
         }}>
           {[
             { label: "Contact",   key: "name"    as SortKey },
-            { label: "NSS State", key: null },
             { label: "Priority",  key: "rscore"  as SortKey },
             { label: "Next Move", key: null },
             { label: "",          key: null },

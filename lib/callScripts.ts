@@ -8,414 +8,398 @@ export interface EmailBody {
 }
 
 export interface EmailScript {
-  subjects: string[];                   // 2-3 subject line options
-  states: Record<NSS, EmailBody>;       // body adapts to contact's current state
-  tips: string[];
+  subjects:  string[];   // 3-4 punchy options
+  cold:      EmailBody;  // first touch
+  followup:  EmailBody;  // after no reply
+  reengage:  EmailBody;  // after silence (21+ days)
+  tips:      string[];
 }
 
 const emailScripts: Record<string, EmailScript> = {
 
   Education: {
     subjects: [
-      "20 minutes — [Company]",
-      "What [Similar District] did differently this year",
-      "One thing worth seeing, [FirstName]",
+      "What [Company] is missing",
+      "The real reason good teachers leave",
+      "5 minutes, [FirstName]",
+      "One question before I leave you alone",
     ],
-    states: {
-      ventral: {
-        body: `Hi [FirstName],
+    cold: {
+      body: `Hi [FirstName],
 
-You mentioned [timing / interest] and I haven't stopped thinking about it since.
+I'm going to skip the intro and ask you one thing.
 
-Districts dealing with the same staff turnover and behavior issues you're facing are getting real results — not a new initiative, not another binder on a shelf. Actual retention numbers moving. Referrals dropping.
+When a great teacher leaves your building — the kind your students come back to visit — what's the honest reason they give?
 
-I have about 20 minutes of data I'd put in front of you. That's all I'm asking.
+Not the exit survey answer. The one they tell a colleague in the parking lot.
 
-Tuesday at 10am or Thursday at 2pm — which one works?
+Because if it has anything to do with the weight of the job, not the pay — I have something specific worth seeing.
 
-Chris
-Pivot Training`,
-        ps: "If neither works, just reply with a time. I'll make it happen.",
-      },
-      sympathetic: {
-        body: `Hi [FirstName],
-
-I know you get emails like this constantly. I'm going to skip the usual part where I tell you about our program.
-
-Instead — one question: What's your biggest challenge with staff right now? Turnover, performance, burnout, something else?
-
-Because the answer completely changes what I'd send you. And I'd rather send you the right thing than waste your time with a one-size-fits-all pitch.
-
-One sentence reply is all I need.
+One page. No meeting required.
 
 Chris
 Pivot Training`,
-        ps: "No meeting required. Not even a phone call. Just a reply.",
-      },
-      dorsal: {
-        body: `Hi [FirstName],
+      ps: "Reply with one word: burnout, behavior, leadership, or something else. I'll send the right thing.",
+    },
+    followup: {
+      body: `Hi [FirstName],
 
-No agenda here. Just checking back in.
+Sent you something last week — didn't want it to get buried.
 
-I know timing hasn't been right — and that's completely fine. I'm not reaching out to push anything. Just wanted to make sure you knew we're still here when it makes sense.
+One question: is staff burnout something you're actively measuring right now, or is it more of a "we'll know it when we see it" situation?
 
-No need to reply to this.
+Because most districts are in the second camp. And I have something that changes that.
+
+Worth a reply?
 
 Chris
 Pivot Training`,
-        ps: "If something's shifted and you want to reconnect, I'm one email away.",
-      },
+      ps: "If the timing is bad, just say so. I'll circle back.",
+    },
+    reengage: {
+      body: `Hi [FirstName],
+
+It's been a while. No agenda.
+
+Just wanted to check in and see how the year's going over there. Staff situations in education have been rough across the board — curious how your building is holding up.
+
+No ask. Just a check-in.
+
+Chris`,
     },
     tips: [
-      "Subject line A/B: '20 minutes' outperforms longer subjects by 30%+ in education",
-      "Replace [Company] with actual district name and [Similar District] with a real reference if you have one",
-      "For Cautious contacts: asking one question > making any pitch. They control the reply.",
-      "For Quiet contacts: the goal is zero pressure. One response is a win.",
-      "Send Tuesday–Thursday, 7–9am or 4–6pm. Avoid Monday and Friday.",
+      "The parking lot question is your opener — most administrators know exactly what that answer is.",
+      "Never lead with your program. Lead with their problem.",
+      "Education contacts respond to specificity. 'A district like yours' beats 'many districts.'",
+      "Send Tuesday–Thursday, 6:30–8am or 3:30–5pm — before and after the school day.",
     ],
   },
 
   "Education Service Center": {
     subjects: [
-      "Regional impact — [Organization]",
-      "How [Region] ISDs are solving this together",
-      "[FirstName] — one idea for your member districts",
+      "One idea for your member districts",
+      "The gap your ISDs keep hitting",
+      "[FirstName] — regional question",
+      "What [Company] could offer that most centers can't",
     ],
-    states: {
-      ventral: {
-        body: `Hi [FirstName],
+    cold: {
+      body: `Hi [FirstName],
 
-Quick question: how many of your member districts are coming to you right now with staff retention and behavior problems?
+Quick question.
 
-Because what we've built is designed specifically for centers like [Organization] — one engagement that reaches your entire network instead of district by district, year by year.
+When your member districts come to you with staff burnout and retention problems — what do you hand them right now?
 
-I'd love to walk you through how two other regional centers are rolling this out. 20 minutes.
+Because what I keep hearing from service center leaders is that the demand from their districts is outpacing what they're equipped to offer on the people side.
 
-Are you available [Day] or [Day]?
-
-Chris
-Pivot Training`,
-        ps: "I'll send the one-page overview today so you have it before we talk.",
-      },
-      sympathetic: {
-        body: `Hi [FirstName],
-
-I'm not here to sell you a program. I want to ask you something first.
-
-When your member districts come to you with staff burnout and turnover problems — what do you have to give them right now? What's in the toolkit?
-
-Because if there's a gap there, I might have something worth 10 minutes of your time. If there isn't, no harm done.
-
-Worth a quick reply?
+If that's the gap, I have something worth 15 minutes.
 
 Chris
 Pivot Training`,
-        ps: "This is a genuine question, not a setup for a pitch.",
-      },
-      dorsal: {
-        body: `Hi [FirstName],
+      ps: "Two regional centers are already running this across their networks — happy to share what that looks like.",
+    },
+    followup: {
+      body: `Hi [FirstName],
 
-No ask, no meeting request. Just want to stay on your radar.
+Sent you something recently — wanted to follow up before it got lost.
 
-When timing is right and your districts start asking for something different on staff wellness and retention — we're here. We've worked with regional centers before and know how to make it easy on your team.
+The core question I was asking: what does [Company] have to offer when a district comes to you with a staff burnout or retention problem?
 
-Keep us in mind.
+If there's a gap there, I have something worth a conversation.
 
 Chris
 Pivot Training`,
-        ps: "Happy to send a quick one-pager whenever it's useful.",
-      },
+      ps: "One page is all I need to show you. No meeting required.",
+    },
+    reengage: {
+      body: `Hi [FirstName],
+
+Been a while — no pressure here.
+
+Just wanted to stay on your radar. When your member districts start asking for something different on staff wellness and retention, I'd like to be the first call.
+
+Chris`,
     },
     tips: [
-      "Lead with the multiplier effect — one engagement reaches dozens of districts",
-      "Ask how many member districts they serve before pitching anything",
-      "Offer to present at a regional convening — visibility builds credibility fast",
-      "Service centers are relationship-driven. Multiple touches before a yes is normal.",
+      "Lead with the multiplier effect — one program reaches dozens of districts.",
+      "Ask how many member districts they serve before saying anything about what you do.",
+      "Offer to present at a regional convening — visibility with districts is currency for them.",
+      "Service center relationships move slowly. Multiple touches before a yes is completely normal.",
     ],
   },
 
   "Non-profit": {
     subjects: [
-      "Your frontline staff — [FirstName]",
-      "What's actually causing turnover in orgs like yours",
-      "One case study from [Similar Org Type]",
+      "Your frontline staff, [FirstName]",
+      "The honest reason people leave orgs like yours",
+      "One case study — under 2 minutes",
+      "Before I leave you alone",
     ],
-    states: {
-      ventral: {
-        body: `Hi [FirstName],
+    cold: {
+      body: `Hi [FirstName],
 
-You already know what I'm going to say — your frontline staff are carrying weight no one trained them for, and the turnover it causes is quietly destroying your ability to deliver on your mission.
+One question before anything else.
 
-Here's what I want to share: one case study from an org almost identical to [Company]. Same size, same population served, same burnout problem. Different outcome.
+When your best frontline staff leave — not the ones you expected to go, the ones you couldn't afford to lose — what's the real reason?
 
-Can we get 20 minutes on the calendar this week?
+Not the exit form. The conversation in the parking lot.
 
-Chris
-Pivot Training`,
-        ps: "I'll send the case study today so you have it before we connect.",
-      },
-      sympathetic: {
-        body: `Hi [FirstName],
+Because if the answer involves exhaustion, secondary trauma, or feeling unsupported by a system they believe in — I have something worth seeing.
 
-Quick question and then I'll leave you alone.
-
-What's the number one reason your frontline staff give when they leave? And be honest with yourself about it — not the exit survey answer, the real one.
-
-Because if it's anything related to emotional exhaustion, secondary trauma, or just feeling unsupported — I have something worth seeing. Not a wellness program. Something that actually addresses the cause.
-
-Worth a reply?
+Not a wellness program. Something that addresses the actual cause.
 
 Chris
 Pivot Training`,
-        ps: "If this isn't the right time, just say so. No hard feelings.",
-      },
-      dorsal: {
-        body: `Hi [FirstName],
+      ps: "One case study, one page. Reply and I'll send it today.",
+    },
+    followup: {
+      body: `Hi [FirstName],
 
-Just checking in. No ask.
+Sent you something last week. Didn't want it to get buried.
 
-I know organizations like [Company] are stretched right now — everything is. I'm not here to add to your list.
+Real question: what's your staff turnover situation actually looking like right now? Because in most orgs I talk to, the number being tracked and the number being felt are different.
 
-When capacity opens up and you're ready to think about staff retention and sustainability — we're here. Until then, take care of your team.
+Worth a reply.
 
 Chris
 Pivot Training`,
-        ps: "One resource that might be useful in the meantime: [insert free resource]. No strings.",
-      },
+      ps: "If this isn't the right time, just say so. No hard feelings.",
+    },
+    reengage: {
+      body: `Hi [FirstName],
+
+It's been a while. No ask.
+
+Nonprofits are carrying a lot right now and I'm not here to add to your list. Just wanted to check in and see how your team is doing.
+
+Take care of them.
+
+Chris`,
     },
     tips: [
-      "Use the word 'mission' not 'ROI' — nonprofits connect staff wellness to impact, not profit",
-      "Reference secondary traumatic stress — they know the term and feel it acutely",
-      "SAMHSA, HRSA, and foundation grants often cover this work — mention it in the rebuttal if needed",
-      "Ask: 'What would it mean for the people you serve if your staff had more capacity?' — connects retention to mission",
+      "Say 'mission' not 'ROI' — nonprofits connect staff care to the people they serve, not a P&L.",
+      "Ask about secondary traumatic stress — they feel it constantly and rarely have the right language for it.",
+      "SAMHSA, HRSA, and foundation grants often fund this work — mention it if budget comes up.",
+      "Never say 'training program.' Say 'staff capacity' or 'retention infrastructure.'",
     ],
   },
 
   Corporate: {
     subjects: [
-      "Leadership performance — [Company]",
       "What's actually behind your turnover number",
-      "[FirstName] — 20 minutes on something specific",
+      "[FirstName] — leadership performance question",
+      "The gap no one trains for",
+      "20 minutes on something specific",
     ],
-    states: {
-      ventral: {
-        body: `Hi [FirstName],
+    cold: {
+      body: `Hi [FirstName],
 
-Here's what I've seen at companies like [Company]: the managers who are technically excellent and still struggling to lead people effectively aren't doing it on purpose. Nobody taught them how to perform under pressure. That gap is expensive.
+Here's what I keep seeing at companies like [Company].
 
-I'd like to show you what it looks like to close it — not theoretically, with actual before-and-after performance data from teams in your space.
+Managers who are technically excellent — promoted because they were great at the work — and still struggling when the pressure goes up. Communication breaks down. Good people leave. Performance dips exactly when you need it not to.
+
+Nobody taught them how to lead under pressure. That gap is expensive.
+
+I'd like to show you what closing it looks like.
 
 20 minutes this week?
 
 Chris
 Pivot Training`,
-        ps: "I'll send the one-page ROI model today so you have something concrete before we talk.",
-      },
-      sympathetic: {
-        body: `Hi [FirstName],
+      ps: "I'll send one page of before/after data today — no meeting required to see it.",
+    },
+    followup: {
+      body: `Hi [FirstName],
 
-I won't pitch you. One question instead.
+Sent you something last week. Bumping it up in case it got buried.
 
-Where does leadership performance break down most visibly at [Company] right now — in high-pressure situations, in communication, or in retaining the people you've invested in?
+Quick question: where does your leadership team break down most visibly when pressure goes up?
 
-Because the answer tells me whether what we do is even relevant for you. And if it's not, I'll tell you that.
+Because that's exactly where we get traction.
 
-Worth a reply?
-
-Chris
-Pivot Training`,
-        ps: "No meeting request attached to this. Just a question.",
-      },
-      dorsal: {
-        body: `Hi [FirstName],
-
-I know you've got a full plate. I'll keep this short.
-
-If leadership development and retention ever come back up on the priority list — I'd like to be the first call you make. We've helped companies in [Company]'s position before, and I think we could help you too.
-
-No rush. Just keeping the door open.
+Worth a reply.
 
 Chris
 Pivot Training`,
-        ps: "Happy to send something over whenever it's a better time.",
-      },
+      ps: "No meeting attached. Just a question.",
+    },
+    reengage: {
+      body: `Hi [FirstName],
+
+It's been a while. Nothing to sell today.
+
+Just wanted to stay on your radar. When leadership performance or retention comes back up as a priority — I'd like to be the first call.
+
+Chris`,
     },
     tips: [
-      "Frame it as leadership performance, not wellness — L&D budgets are more accessible",
-      "The ROI number: $60K average cost to replace a manager. Use it.",
-      "Ask early: 'Who owns this decision?' Don't invest time in someone who can't say yes.",
-      "Cardone rule: every email ends with a specific ask or a specific next step.",
+      "Lead with 'leadership performance' not 'wellness' — L&D budgets are more accessible.",
+      "The ROI anchor: $60K per manager replaced. Don't lead with it — bring it when they say budget.",
+      "Ask 'who else needs to be part of this conversation?' early — don't invest in someone who can't say yes.",
+      "What's been tried already tells you why the problem persists and exactly where to position.",
     ],
   },
 
   Government: {
     subjects: [
-      "Workforce retention — [Department]",
-      "[FirstName] — staff performance and the problem everyone ignores",
-      "One idea for [Department]",
+      "Workforce retention — [Company]",
+      "The people problem no agency is solving",
+      "[FirstName] — one question",
+      "Before the next budget cycle",
     ],
-    states: {
-      ventral: {
-        body: `Hi [FirstName],
+    cold: {
+      body: `Hi [FirstName],
 
-Public sector turnover is at a 20-year high and the institutional knowledge walking out the door doesn't come back. The people left behind are stretched thin and losing the capacity to deliver.
+Public sector turnover is at a 20-year high. The institutional knowledge walking out the door doesn't come back — and the team left behind is operating at a level of strain that doesn't show up in any report.
 
-What we do is give public service teams real tools to stay effective under that kind of pressure — and keep the experienced staff you've spent years developing.
+What we do is give public service teams real tools to stay effective under that kind of pressure.
 
-I'd like to put 20 minutes in front of you. Can we connect [Day] or [Day]?
+I'd like to put 20 minutes in front of you. Not a pitch — outcomes data from agencies in your position.
 
-Chris
-Pivot Training`,
-        ps: "I can send our program overview in your preferred format before the call.",
-      },
-      sympathetic: {
-        body: `Hi [FirstName],
-
-Simple question: what's the biggest people challenge your department is actually dealing with right now? Not the one in the strategic plan — the real one.
-
-I ask because what we do is very specific, and I'd rather know if it's relevant before I take up more of your time.
-
-One sentence reply tells me everything.
+Worth it?
 
 Chris
 Pivot Training`,
-        ps: "If now isn't the right time in the budget cycle, I'd still appreciate knowing when to follow up.",
-      },
-      dorsal: {
-        body: `Hi [FirstName],
+      ps: "I can send it in whatever format your approval process needs.",
+    },
+    followup: {
+      body: `Hi [FirstName],
 
-No ask today. Just want to stay on your radar for the next budget cycle.
+Sent you something recently — didn't want it to get buried in the inbox.
 
-When workforce retention and staff performance come back up on the agenda — and they always do — I'd like the chance to show you what Pivot Training has done for agencies in similar positions.
+One question: what's the biggest people challenge your department is actually dealing with right now? Not the strategic plan answer. The real one.
 
-Keep us in mind.
+Because what we do is specific, and I'd rather know if it's relevant before I take up more of your time.
 
 Chris
 Pivot Training`,
-        ps: "Happy to send a summary in your preferred format whenever it's useful.",
-      },
+      ps: "One sentence reply is all I need.",
+    },
+    reengage: {
+      body: `Hi [FirstName],
+
+Been a while. No agenda.
+
+Just want to stay on your radar ahead of the next budget cycle. When workforce retention comes back up on the agenda — and it always does — I'd like the chance to show you what we've done for agencies in your position.
+
+Chris`,
     },
     tips: [
-      "Government procurement is slow — plant the seed early, follow up quarterly",
-      "Reference their existing wellness mandates: EAP, OPM guidelines, workforce resilience plans",
-      "Find the internal champion who's frustrated with the problem — they'll move things internally",
-      "'Performance' and 'retention' unlock budget. 'Wellness' often doesn't.",
+      "Plant seeds early — government procurement is long. The goal of the first email is to be remembered.",
+      "Find the internal champion: someone frustrated by the problem who will carry it forward internally.",
+      "'Performance' and 'retention' open budget conversations. 'Wellness' rarely does.",
+      "Ask what format they need information in — it signals you understand their approval process.",
     ],
   },
 
   Healthcare: {
     subjects: [
-      "Clinical retention — [Organization]",
       "The real reason your nurses are leaving",
-      "[FirstName] — 20 minutes on something specific",
+      "Clinical retention — [Company]",
+      "[FirstName] — one question for you",
+      "What the exit surveys aren't capturing",
     ],
-    states: {
-      ventral: {
-        body: `Hi [FirstName],
+    cold: {
+      body: `Hi [FirstName],
 
-Every health system I talk to is dealing with the same thing: clinical staff who are technically excellent but emotionally depleted — and leaving because of it.
+One question.
 
-At $50,000 to $80,000 per nurse replacement, you already know this is a financial problem. What I want to show you is that it's also a solvable one.
+When your best clinical staff leave — the ones your patients trust, the ones who trained the people behind them — what do they tell you is the real reason?
 
-I have outcomes data from health systems in your position. Can we get 20 minutes this week?
+Not the exit survey answer. The conversation in the parking lot.
 
-Chris
-Pivot Training`,
-        ps: "I'll send our clinical retention brief today so you have the numbers before we talk.",
-      },
-      sympathetic: {
-        body: `Hi [FirstName],
+Because if the answer involves exhaustion, moral injury, or a system that feels misaligned with why they got into healthcare — I have something specific worth seeing.
 
-One question before anything else.
-
-When your best clinical staff leave — the ones you trained, the ones your patients trust — what do they tell you is the real reason? Not the exit survey answer. The conversation in the parking lot.
-
-Because if the answer involves exhaustion, feeling unsupported, or the system feeling misaligned with why they got into healthcare — I have something worth your time.
-
-Worth a reply?
+Not another wellness program.
 
 Chris
 Pivot Training`,
-        ps: "No meeting attached to this. Just want to know if we're talking about the same problem.",
-      },
-      dorsal: {
-        body: `Hi [FirstName],
+      ps: "At $50–80K per nurse replaced, this conversation is worth 20 minutes.",
+    },
+    followup: {
+      body: `Hi [FirstName],
 
-No pitch. Just checking in.
+Sent you something last week. Didn't want it to slip through.
 
-I know healthcare leadership is under enormous pressure right now. I'm not here to add to it.
+Real question: is clinical staff burnout something you're actively measuring right now, or is it more reactive — you find out when someone leaves?
 
-When the timing is better and clinical retention comes back to the top of the list — we're here, and I'd like to be the first call you make.
+Because most health systems are in the second camp. And there's a better way.
 
-Take care of your team.
+Worth a reply.
 
 Chris
 Pivot Training`,
-        ps: "I can send our clinical outcomes brief whenever it's a better time.",
-      },
+      ps: "No meeting attached. Just a question.",
+    },
+    reengage: {
+      body: `Hi [FirstName],
+
+It's been a while. No pitch.
+
+Healthcare leadership is under enormous pressure right now and I'm not here to add to it. Just wanted to check in and see how your team is holding up.
+
+When clinical retention comes back to the top of the list — I'd like to be the first call.
+
+Chris`,
     },
     tips: [
-      "The number that ends the budget objection: $50K–80K per nurse replaced. Have it ready.",
-      "Say 'moral injury' not just burnout — clinical leaders know the term and it signals you understand the depth of the problem",
-      "Connect retention to patient safety scores — that's a metric their board tracks",
-      "Find out if the conversation is CNO, HR, or both — the framing shifts completely",
+      "Ask what it's like 'on the floor' not what the numbers say — you want them to say it in their own words.",
+      "Use 'moral injury' not just burnout — clinical leaders know the term and it signals depth.",
+      "The number: $50–80K per nurse replaced. Don't lead with it — bring it when they say budget.",
+      "Ask about patient safety scores — that's a metric their board tracks and it connects retention to outcomes.",
     ],
   },
 
   Default: {
     subjects: [
-      "Quick question — [Company]",
-      "[FirstName] — 20 minutes on something worth seeing",
-      "One thing before I leave you alone",
+      "One question, [FirstName]",
+      "Before I leave you alone",
+      "20 minutes on something specific",
+      "What's actually behind the problem",
     ],
-    states: {
-      ventral: {
-        body: `Hi [FirstName],
+    cold: {
+      body: `Hi [FirstName],
 
-I'll be direct. We help organizations like [Company] solve the people problems that keep showing up no matter what else you fix — turnover, performance under pressure, communication breaking down when it matters most.
+I'm going to skip the pitch and ask you one thing.
 
-The results are measurable and they happen fast. I'd like to show you what that looks like for an organization in your position.
+What's the biggest people challenge slowing [Company] down right now — turnover, leadership, performance under pressure, something else?
 
-Can we find 20 minutes this week?
+Because what we do is specific. And the answer tells me whether it's even worth saying more.
 
-Chris
-Pivot Training`,
-        ps: "I'll send one page of outcomes data today so you have something concrete before we talk.",
-      },
-      sympathetic: {
-        body: `Hi [FirstName],
-
-I'm not going to pitch you on this email. One question first.
-
-What's the biggest people challenge slowing [Company] down right now? Turnover, leadership, culture, communication — pick the one that's actually on your mind.
-
-If what we do is relevant, I'll tell you how. If it's not, I'll tell you that too.
-
-One sentence reply is all I need.
+One sentence is all I need.
 
 Chris
 Pivot Training`,
-        ps: "No meeting request attached. Just a question.",
-      },
-      dorsal: {
-        body: `Hi [FirstName],
+      ps: "If it's relevant, I'll tell you how. If it's not, I'll tell you that too.",
+    },
+    followup: {
+      body: `Hi [FirstName],
 
-Just wanted to check back in — no agenda.
+Sent you something last week. Bumping it up in case it got buried.
 
-I know timing hasn't been right, and that's completely fine. When it changes and you're ready to look at what Pivot Training does, I'll be here.
+Still just the one question: where does your team break down most when the pressure goes up?
 
-No pressure. Take care.
+Worth a reply.
 
 Chris
 Pivot Training`,
-        ps: "One email is all it takes to reconnect whenever you're ready.",
-      },
+      ps: "No meeting attached. Just a question.",
+    },
+    reengage: {
+      body: `Hi [FirstName],
+
+It's been a while. No agenda.
+
+Just checking back in. When the timing is right and you're ready to look at what Pivot Training does — I'll be here.
+
+No pressure.
+
+Chris`,
     },
     tips: [
-      "Keep it under 150 words. Every sentence they have to read is a reason to stop reading.",
-      "One question beats any pitch on a cold or warm email.",
-      "P.S. lines get read almost as often as subject lines — use them for the real ask.",
-      "If no reply after 3 days, one follow-up: 'Bumping this up in case it got buried.'",
+      "Keep it under 120 words. Every sentence they have to read is a reason to stop reading.",
+      "One question beats any pitch on a cold email.",
+      "P.S. lines get read almost as often as subject lines — use them.",
+      "If no reply after 3 days: 'Bumping this up in case it got buried.' That's the whole email.",
     ],
   },
 
@@ -438,14 +422,14 @@ export interface Voicemail {
 }
 
 export interface CallScript {
-  gatekeeper: string;  // what to say to get past the front desk
-  opener:     string;  // pattern interrupt — sounds nothing like a PD vendor
-  rapport:    string;  // show you understand their world before asking anything
-  discovery:  string;  // questions to find the real problem — listen more than talk
-  pivot:      string;  // when they ask "so what do you do?" — never say PD workshops
-  bridge:     string;  // connect their problem to your work, naturally
-  rebuttal:   string;  // handle pushback without sounding defensive
-  close:      string;  // simple next step — not a hard sell
+  gatekeeper: string;
+  opener:     string;
+  rapport:    string;
+  discovery:  string;
+  pivot:      string;
+  bridge:     string;
+  rebuttal:   string;
+  close:      string;
   voicemail:  Voicemail;
   tips:       string[];
 }
@@ -765,4 +749,3 @@ export function getCallScript(industry: string | null): CallScript {
   );
   return scripts[key ?? "Default"];
 }
-

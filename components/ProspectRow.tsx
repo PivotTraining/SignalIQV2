@@ -1,9 +1,7 @@
 "use client";
 import Link from "next/link";
 import type { Prospect } from "@/lib/types";
-import { stateCode } from "@/lib/nss";
 import { rBand, rScore } from "@/lib/rscore";
-import StateBadge from "./StateBadge";
 
 interface Props {
   p:            Prospect;
@@ -21,8 +19,10 @@ const PRIORITY: Record<string, { label: string; bg: string; color: string }> = {
 export default function ProspectRow({ p, onAct, isFavorited, onFavorite }: Props) {
   const r        = rScore(p);
   const band     = rBand(r);
-  const code     = stateCode[p.state];
   const priority = PRIORITY[band] ?? PRIORITY.low;
+
+  // Derive initials color from NSS state for avatar
+  const stateClass = p.state === "ventral" ? "v" : p.state === "sympathetic" ? "s" : "d";
 
   return (
     <div className="prospect-row" style={{ display: "grid", position: "relative" }}>
@@ -51,19 +51,14 @@ export default function ProspectRow({ p, onAct, isFavorited, onFavorite }: Props
         >
           {isFavorited ? "★" : "☆"}
         </button>
-        <div className={`avatar ${code}`}>{p.initials}</div>
+        <div className={`avatar ${stateClass}`}>{p.initials}</div>
         <div>
           <div className="person-name">{p.name}</div>
           <div className="person-sub">{p.title} · {p.company}</div>
         </div>
       </div>
 
-      {/* NSS state */}
-      <div style={{ position: "relative", zIndex: 1 }}>
-        <StateBadge state={p.state} />
-      </div>
-
-      {/* Priority badge — simplified from raw R-Score number */}
+      {/* Priority badge */}
       <div style={{ position: "relative", zIndex: 1 }}>
         <span style={{
           display: "inline-flex", alignItems: "center",
