@@ -281,7 +281,7 @@ export default function CommandCenter() {
           </div>
           {sorted.length === 0
             ? <div className="empty">Loading prospects…</div>
-            : sorted.map(p => <ProspectRow key={p.id} p={p} onAct={setModal} />)}
+            : sorted.map(p => <ProspectRow key={p.id} p={p} onOpen={setModal} />)}
         </div>
 
         <div className="card">
